@@ -1,0 +1,92 @@
+Notebook[{
+  Cell["B_c Mixing Angle: Momentum-Space QCD Sum Rule", "Title"],
+  Cell["This notebook is a thin wrapper around BcMixingMomentum.wl. Evaluate the cells from top to bottom in a Wolfram kernel where FeynCalc is installed.", "Text"],
+
+  Cell["Load", "Section"],
+  Cell[BoxData[
+    RowBox[{
+      RowBox[{"SetDirectory", "[", RowBox[{"NotebookDirectory", "[", "]"}], "]"}],
+      ";"
+    }]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"Get", "[", "\"BcMixingMomentum.wl\"", "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"CheckEnvironment", "[", "]"}]
+  ], "Input"],
+
+  Cell["Projected Loop Integrands", "Section"],
+  Cell["These cells build the spin-1 projected OPE-side integrands before the final spectral-density step.", "Text"],
+  Cell[BoxData[
+    RowBox[{
+      RowBox[{"Correlator", "[", RowBox[{"\"AA\"", ",", "\"pert\""}], "]"}],
+      "//",
+      "Short"
+    }]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{
+      RowBox[{"Correlator", "[", RowBox[{"\"AB\"", ",", "\"pert\""}], "]"}],
+      "//",
+      "Short"
+    }]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{
+      RowBox[{"Correlator", "[", RowBox[{"\"BB\"", ",", "\"pert\""}], "]"}],
+      "//",
+      "Short"
+    }]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{
+      RowBox[{"Correlator", "[", RowBox[{"\"AA\"", ",", "\"G2\""}], "]"}],
+      "//",
+      "Short"
+    }]
+  ], "Input"],
+
+  Cell["Feynman-Parameter Representation", "Section"],
+  Cell["Use these expressions to derive or check rho[channel, order][s]. The output is a list of {parameterIntegrand, prefactor, variables}, one item per scalar loop-integral term.", "Text"],
+  Cell[BoxData[
+    RowBox[{"FeynmanParameterForm", "[", RowBox[{"\"AA\"", ",", "\"pert\""}], "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"FeynmanParameterForm", "[", RowBox[{"\"AB\"", ",", "\"pert\""}], "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"FeynmanParameterForm", "[", RowBox[{"\"BB\"", ",", "\"pert\""}], "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"FeynmanParameterForm", "[", RowBox[{"\"AA\"", ",", "\"G2\""}], "]"}]
+  ], "Input"],
+
+  Cell["Borel Moments And Mixing Angle", "Section"],
+  Cell["BorelPi is formal until spectral densities are supplied with SetSpectralDensity[channel, order, expr, s].", "Text"],
+  Cell[BoxData[
+    RowBox[{"BorelPi", "[", RowBox[{"\"AA\"", ",", "\"pert\""}], "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"MixingAngle", "[", RowBox[{"M2", ",", "s0"}], "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"OPESummary", "[", RowBox[{"M2", ",", "s0"}], "]"}]
+  ], "Input"],
+
+  Cell["Example: Loading A Spectral Density", "Section"],
+  Cell["Replace the right-hand side below with the derived spectral density for the chosen channel and order.", "Text"],
+  Cell[BoxData[
+    RowBox[{
+      RowBox[{"(*",
+        RowBox[{
+          RowBox[{"SetSpectralDensity", "[", RowBox[{"\"AA\"", ",", "\"pert\"", ",", RowBox[{"rhoAApert", "[", "s", "]"}], ",", "s"}], "]"}],
+          ";"
+        }],
+      "*)"}]
+    }]
+  ], "Input"],
+
+  Cell["G3 Extension Point", "Section"],
+  Cell["The triple-gluon condensate is intentionally not implemented in v1. Add it as LoopIntegrand[channel, \"G3\"] once the perturbative and G2 pieces are stable.", "Text"]
+}]
