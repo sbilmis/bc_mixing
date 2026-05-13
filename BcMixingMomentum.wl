@@ -11,20 +11,28 @@
       J_A[mu] = \bar b gamma_mu gamma_5 c
       J_B[mu] = i \bar b sigma_{mu alpha} p^alpha gamma_5 c
 
-    Implemented OPE terms:
+    Implemented OPE algebra:
       - perturbative heavy-heavy loop
       - dimension-4 gluon condensate <g_s^2 G^2>
+
+    Implemented numerical spectral densities:
+      - perturbative heavy-heavy loop
+
+    Important:
+      The G2 algebra is available through Correlator[channel, "G2"] and
+      FeynmanParameterForm[channel, "G2"], but its contribution to the Borel
+      sum rule is distributional in s.  It should be added as a direct Borel
+      moment, not as an ordinary smooth rho(s), in the next step.
 
     Not implemented in v1:
       - dimension-6 triple-gluon condensate <g_s^3 G^3>
 
     Notes:
-      1. The tensor-current factor i is normally removed from the real
-         invariant functions after combining current, conjugate current and
-         the overall i in the correlator definition.  Therefore the default
-         algebraic B vertex below is sigma.p gamma_5.  Set
-         $BcMixingKeepRawTensorI = True before evaluating correlators if you
-         want the raw vertex i sigma.p gamma_5 instead.
+      1. The tensor current contains the explicit current factor
+         i sigma_{mu alpha} p^alpha gamma_5.  Since FeynCalc's DiracSigma
+         already contains the conventional i/2 commutator, retaining the
+         current's extra factor of i makes the projected AB and BB invariant
+         amplitudes real.
       2. BorelPi is intentionally written in terms of spectral densities
          rho[channel, order][s].  Use SetSpectralDensity after deriving or
          importing the spectral densities from the projected Feynman-parameter
@@ -67,7 +75,7 @@ ClearAll[
 ];
 
 $BcMixingNc = 3;
-$BcMixingKeepRawTensorI = False;
+$BcMixingKeepRawTensorI = True;
 $BcMixingChannels = <|
   "AA" -> {"A", "A"},
   "AB" -> {"A", "B"},
@@ -330,12 +338,50 @@ SpectralDensityDefinedQ[channel_String, order_String] := Which[
 ];
 
 SetSpectralDensity[channel_String, order_String, expr_, var_: s] := Module[
-  {ch = ValidateChannel[channel], ord = ValidateOrder[order]},
-  $BcMixingSpectralDensities[{ch, ord}] = Function[{z}, Evaluate[expr /. var -> z]];
+  {ch = ValidateChannel[channel], ord = ValidateOrder[order], body = expr, vv = var},
+  $BcMixingSpectralDensities[{ch, ord}] = With[
+    {storedBody = body, storedVar = vv},
+    (storedBody /. storedVar -> #) &
+  ];
   {ch, ord}
 ];
 
 ClearSpectralDensities[] := ($BcMixingSpectralDensities = <||>;);
+
+KallenLambda[ss_, m1_, m2_] :=
+  ss^2 + m1^4 + m2^4 - 2 ss m1^2 - 2 ss m2^2 - 2 m1^2 m2^2;
+
+OnShellKDotP[ss_] := (ss + mc^2 - mb^2)/2;
+
+PerturbativeNumerator[channel_String, ss_: s] := Module[
+  {kp = OnShellKDotP[ss], k2 = mc^2, ch = ValidateChannel[channel]},
+  Switch[
+    ch,
+    "AA",
+      -4/ss (2 kp^2 + (3 mb mc + k2) ss - 3 kp ss),
+    "AB",
+      12 (-(mb + mc) kp + mc ss),
+    "BA",
+      12 (-(mb + mc) kp + mc ss),
+    "BB",
+      -4 (4 kp^2 + (3 mb mc - k2) ss - 3 kp ss)
+  ] // Simplify
+];
+
+PerturbativeSpectralDensity[channel_String, ss_: s] := Module[
+  {lam = KallenLambda[ss, mb, mc]},
+  $BcMixingNc/(16 Pi^2) Sqrt[lam]/ss PerturbativeNumerator[channel, ss]
+];
+
+InstallPerturbativeSpectralDensities[] := (
+  Scan[
+    SetSpectralDensity[#, "pert", PerturbativeSpectralDensity[#, s], s] &,
+    {"AA", "AB", "BA", "BB"}
+  ];
+  "Installed perturbative spectral densities for AA, AB, BA and BB."
+);
+
+InstallPerturbativeSpectralDensities[];
 
 SpectralDensity[channel_String, order_String, var_: s] := Module[
   {ch = ValidateChannel[channel], ord = ValidateOrder[order]},
@@ -359,7 +405,7 @@ Options[BorelPi] = {
 };
 
 BorelPi[channel_String, order_String : "total", m2_: M2, continuum_: s0, OptionsPattern[]] := Module[
-  {var = Unique["s"], density, lower, head, asm},
+  {var, density, lower, head, asm},
   ValidateChannel[channel];
   ValidateOrder[order];
 
@@ -372,7 +418,7 @@ BorelPi[channel_String, order_String : "total", m2_: M2, continuum_: s0, Options
   ];
   asm = OptionValue[Assumptions] /. Automatic -> $Assumptions;
 
-  head[Exp[-var/m2] density, {var, lower, continuum}, Assumptions -> asm]
+  head[Evaluate[Exp[-var/m2] density], {var, lower, continuum}, Assumptions -> asm]
 ];
 
 MixingAngle[m2_: M2, continuum_: s0, order_String : "total"] :=
@@ -383,6 +429,218 @@ MixingAngle[m2_: M2, continuum_: s0, order_String : "total"] :=
 
 MixingAngleDegrees[m2_: M2, continuum_: s0, order_String : "total"] :=
   180/Pi MixingAngle[m2, continuum, order];
+
+NormalizeMixingAngle[theta_?NumericQ] :=
+  theta - (Pi/2) Round[theta/(Pi/2)];
+
+NormalizeMixingAngleDegrees[thetaDeg_?NumericQ] :=
+  thetaDeg - 90 Round[thetaDeg/90];
+
+Options[NumericBorelPi] = Options[NIntegrate];
+
+NumericBorelPi[
+  channel_String,
+  order_String : "pert",
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] := Module[
+  {var, rules, lower, density},
+  ValidateChannel[channel];
+  ValidateOrder[order];
+  If[! SpectralDensityDefinedQ[channel, order],
+    Message[
+      NumericBorelPi::norho,
+      channel,
+      order
+    ];
+    Return[$Failed]
+  ];
+  rules = Join[ParameterRules[params], {M2 -> m2Val, s0 -> continuumVal}];
+  lower = N[BcThreshold[] /. rules];
+  density = Evaluate[SpectralDensity[channel, order, var] /. rules];
+  NIntegrate[
+    Evaluate[Exp[-var/m2Val] density],
+    {var, lower, continuumVal},
+    opts
+  ]
+];
+
+NumericBorelPi::norho =
+  "No installed spectral density for channel `1`, order `2`. Currently v1 installs perturbative rho automatically; G2 still requires the condensate spectral distribution/direct Borel implementation.";
+
+NumericMixingAngle[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  order_String : "pert",
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[NumericBorelPi]
+] := Module[
+  {aa, ab, bb},
+  aa = NumericBorelPi["AA", order, m2Val, continuumVal, params, opts];
+  ab = NumericBorelPi["AB", order, m2Val, continuumVal, params, opts];
+  bb = NumericBorelPi["BB", order, m2Val, continuumVal, params, opts];
+  If[MemberQ[{aa, ab, bb}, $Failed], Return[$Failed]];
+  NormalizeMixingAngle[1/2 ArcTan[aa - bb, -2 ab]]
+];
+
+NumericMixingAngleRaw[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  order_String : "pert",
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[NumericBorelPi]
+] := Module[
+  {aa, ab, bb},
+  aa = NumericBorelPi["AA", order, m2Val, continuumVal, params, opts];
+  ab = NumericBorelPi["AB", order, m2Val, continuumVal, params, opts];
+  bb = NumericBorelPi["BB", order, m2Val, continuumVal, params, opts];
+  If[MemberQ[{aa, ab, bb}, $Failed], Return[$Failed]];
+  1/2 ArcTan[aa - bb, -2 ab]
+];
+
+NumericMixingAngleDegrees[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  order_String : "pert",
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[NumericBorelPi]
+] :=
+  N[180/Pi NumericMixingAngle[m2Val, continuumVal, order, params, opts]];
+
+NumericMixingAngleRawDegrees[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  order_String : "pert",
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[NumericBorelPi]
+] :=
+  N[180/Pi NumericMixingAngleRaw[m2Val, continuumVal, order, params, opts]];
+
+(* ---------------------------------------------------------------------- *)
+(* Borel-window and continuum-threshold scan helpers                       *)
+(* ---------------------------------------------------------------------- *)
+
+BcMixingMomentum::badscan =
+  "Scan specification `1` is not valid. Use {min,max,step} or an explicit numeric list.";
+
+ScanValues[spec : {_?NumericQ, _?NumericQ, _?NumericQ}] := Module[
+  {min = spec[[1]], max = spec[[2]], step = spec[[3]], vals},
+  If[step == 0 || Sign[max - min] =!= Sign[step],
+    Message[BcMixingMomentum::badscan, spec];
+    Return[$Failed]
+  ];
+  vals = Range[min, max, step];
+  If[vals === {} || Abs[Last[vals] - max] > 10^-10,
+    vals = Append[vals, max]
+  ];
+  N[vals]
+];
+
+ScanValues[spec_List] /; VectorQ[spec, NumericQ] := N[spec];
+
+ScanValues[spec_] := (
+  Message[BcMixingMomentum::badscan, spec];
+  $Failed
+);
+
+NumericMomentRecord[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  order_String : "pert",
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[NumericBorelPi]
+] := Module[
+  {aa, ab, bb, thetaRaw, theta},
+  aa = NumericBorelPi["AA", order, m2Val, continuumVal, params, opts];
+  ab = NumericBorelPi["AB", order, m2Val, continuumVal, params, opts];
+  bb = NumericBorelPi["BB", order, m2Val, continuumVal, params, opts];
+  If[MemberQ[{aa, ab, bb}, $Failed], Return[$Failed]];
+  thetaRaw = 1/2 ArcTan[aa - bb, -2 ab];
+  theta = NormalizeMixingAngle[thetaRaw];
+  <|
+    "M2" -> N[m2Val],
+    "s0" -> N[continuumVal],
+    "Order" -> order,
+    "PiAA" -> aa,
+    "PiAB" -> ab,
+    "PiBB" -> bb,
+    "ThetaRawDeg" -> N[180/Pi thetaRaw],
+    "ThetaDeg" -> N[180/Pi theta]
+  |>
+];
+
+Options[MixingAngleScan] = Options[NumericBorelPi];
+
+MixingAngleScan[
+  m2Spec_,
+  s0Spec_,
+  order_String : "pert",
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] := Module[
+  {m2Vals = ScanValues[m2Spec], s0Vals = ScanValues[s0Spec], records},
+  If[m2Vals === $Failed || s0Vals === $Failed, Return[$Failed]];
+  records = Flatten[
+    Table[
+      NumericMomentRecord[m2v, s0v, order, params, opts],
+      {m2v, m2Vals},
+      {s0v, s0Vals}
+    ],
+    1
+  ];
+  DeleteCases[records, $Failed]
+];
+
+MixingAngleDataset[
+  m2Spec_,
+  s0Spec_,
+  order_String : "pert",
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[MixingAngleScan]
+] :=
+  Dataset[MixingAngleScan[m2Spec, s0Spec, order, params, opts]];
+
+MixingAngleMatrix[
+  m2Spec_,
+  s0Spec_,
+  order_String : "pert",
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[MixingAngleScan]
+] := Module[
+  {m2Vals = ScanValues[m2Spec], s0Vals = ScanValues[s0Spec], matrix},
+  If[m2Vals === $Failed || s0Vals === $Failed, Return[$Failed]];
+  matrix = Table[
+    NumericMixingAngleDegrees[m2v, s0v, order, params, opts],
+    {m2v, m2Vals},
+    {s0v, s0Vals}
+  ];
+  <|
+    "M2Values" -> m2Vals,
+    "s0Values" -> s0Vals,
+    "ThetaDegMatrix" -> matrix
+  |>
+];
+
+MixingAngleTable[
+  m2Spec_,
+  s0Spec_,
+  order_String : "pert",
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[MixingAngleScan]
+] := Module[
+  {data = MixingAngleMatrix[m2Spec, s0Spec, order, params, opts]},
+  If[data === $Failed, Return[$Failed]];
+  Grid[
+    Prepend[
+      MapThread[Prepend, {data["ThetaDegMatrix"], data["M2Values"]}],
+      Prepend[data["s0Values"], "M2 \\ s0"]
+    ],
+    Frame -> All,
+    Alignment -> Center
+  ]
+];
 
 OPESummary[m2_: M2, continuum_: s0, params_: $BcMixingDefaultParameters] := Association[
   Table[
@@ -401,14 +659,39 @@ OPESummary[m2_: M2, continuum_: s0, params_: $BcMixingDefaultParameters] := Asso
   ]
 ];
 
-PlotMixingAngle[m2Range : {_, _}, continuum_, params_: $BcMixingDefaultParameters, order_String : "total"] :=
+PlotMixingAngle[m2Range : {_?NumericQ, _?NumericQ}, continuum_?NumericQ, params_: $BcMixingDefaultParameters, order_String : "pert"] :=
   Module[{m2var},
     Plot[
-      Evaluate[MixingAngleDegrees[m2var, continuum, order] /. ParameterRules[params]],
+      NumericMixingAngleDegrees[m2var, continuum, order, params],
       {m2var, m2Range[[1]], m2Range[[2]]},
       AxesLabel -> {"M^2", "theta [deg]"},
-      PlotLabel -> Row[{"B_c mixing angle, order = ", order}],
+      PlotLabel -> Row[{"B_c mixing angle vs M^2, s0 = ", continuum, ", order = ", order}],
       GridLines -> Automatic
+    ]
+  ];
+
+PlotMixingAngleS0[fixedM2_?NumericQ, s0Range : {_?NumericQ, _?NumericQ}, params_: $BcMixingDefaultParameters, order_String : "pert"] :=
+  Module[{s0var},
+    Plot[
+      NumericMixingAngleDegrees[fixedM2, s0var, order, params],
+      {s0var, s0Range[[1]], s0Range[[2]]},
+      AxesLabel -> {"s0", "theta [deg]"},
+      PlotLabel -> Row[{"B_c mixing angle vs s0, M^2 = ", fixedM2, ", order = ", order}],
+      GridLines -> Automatic
+    ]
+  ];
+
+MixingAngleContourPlot[m2Range : {_?NumericQ, _?NumericQ}, s0Range : {_?NumericQ, _?NumericQ}, params_: $BcMixingDefaultParameters, order_String : "pert"] :=
+  Module[{m2var, s0var},
+    ContourPlot[
+      NumericMixingAngleDegrees[m2var, s0var, order, params],
+      {m2var, m2Range[[1]], m2Range[[2]]},
+      {s0var, s0Range[[1]], s0Range[[2]]},
+      FrameLabel -> {"M^2", "s0"},
+      PlotLabel -> Row[{"B_c mixing angle [deg], order = ", order}],
+      Contours -> 12,
+      ColorFunction -> "TemperatureMap",
+      PlotLegends -> Automatic
     ]
   ];
 

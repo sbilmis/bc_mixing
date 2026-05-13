@@ -70,8 +70,71 @@ Notebook[{
   Cell[BoxData[
     RowBox[{"MixingAngle", "[", RowBox[{"M2", ",", "s0"}], "]"}]
   ], "Input"],
+  Cell["The line above is formal unless every requested rho is installed. Perturbative rho is installed automatically. The G2 contribution needs a direct Borel-moment implementation because it is distributional in s. For an immediate perturbative numerical value use:", "Text"],
+  Cell[BoxData[
+    RowBox[{"NumericMixingAngleDegrees", "[", RowBox[{"10", ",", "55", ",", "\"pert\""}], "]"}]
+  ], "Input"],
   Cell[BoxData[
     RowBox[{"OPESummary", "[", RowBox[{"M2", ",", "s0"}], "]"}]
+  ], "Input"],
+
+  Cell["Borel Window And s0 Scans", "Section"],
+  Cell["Use {min,max,step} specifications to scan trial Borel windows and continuum thresholds.", "Text"],
+  Cell[BoxData[
+    RowBox[{"MixingAngleDataset", "[", RowBox[
+      {
+        RowBox[{"{", RowBox[{"8", ",", "12", ",", "1"}], "}"}],
+        ",",
+        RowBox[{"{", RowBox[{"50", ",", "60", ",", "5"}], "}"}],
+        ",",
+        "\"pert\""
+      }], "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"MixingAngleTable", "[", RowBox[
+      {
+        RowBox[{"{", RowBox[{"8", ",", "12", ",", "1"}], "}"}],
+        ",",
+        RowBox[{"{", RowBox[{"50", ",", "60", ",", "5"}], "}"}],
+        ",",
+        "\"pert\""
+      }], "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"PlotMixingAngle", "[", RowBox[
+      {
+        RowBox[{"{", RowBox[{"8", ",", "12"}], "}"}],
+        ",",
+        "55",
+        ",",
+        "$BcMixingDefaultParameters",
+        ",",
+        "\"pert\""
+      }], "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"PlotMixingAngleS0", "[", RowBox[
+      {
+        "10",
+        ",",
+        RowBox[{"{", RowBox[{"50", ",", "60"}], "}"}],
+        ",",
+        "$BcMixingDefaultParameters",
+        ",",
+        "\"pert\""
+      }], "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"MixingAngleContourPlot", "[", RowBox[
+      {
+        RowBox[{"{", RowBox[{"8", ",", "12"}], "}"}],
+        ",",
+        RowBox[{"{", RowBox[{"50", ",", "60"}], "}"}],
+        ",",
+        "$BcMixingDefaultParameters",
+        ",",
+        "\"pert\""
+      }], "]"}]
   ], "Input"],
 
   Cell["Example: Loading A Spectral Density", "Section"],
