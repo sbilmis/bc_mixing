@@ -151,13 +151,13 @@ Notebook[{
       }], "]"}]
   ], "Input"],
 
-  Cell["Example: Loading A Spectral Density", "Section"],
-  Cell["Replace the right-hand side below with the derived spectral density for the chosen channel and order.", "Text"],
+  Cell["Optional Manual Override", "Section"],
+  Cell["The current workflow installs perturbative rho automatically and evaluates G2 as a direct Borel moment. Use SetSpectralDensity only if you want to override a built-in perturbative spectral density for an independent cross-check.", "Text"],
   Cell[BoxData[
     RowBox[{
       RowBox[{"(*",
         RowBox[{
-          RowBox[{"SetSpectralDensity", "[", RowBox[{"\"AA\"", ",", "\"pert\"", ",", RowBox[{"rhoAApert", "[", "s", "]"}], ",", "s"}], "]"}],
+          RowBox[{"SetSpectralDensity", "[", RowBox[{"\"AA\"", ",", "\"pert\"", ",", RowBox[{"rhoAApertIndependent", "[", "s", "]"}], ",", "s"}], "]"}],
           ";"
         }],
       "*)"}]
