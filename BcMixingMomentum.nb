@@ -70,9 +70,15 @@ Notebook[{
   Cell[BoxData[
     RowBox[{"MixingAngle", "[", RowBox[{"M2", ",", "s0"}], "]"}]
   ], "Input"],
-  Cell["The line above is formal unless every requested rho is installed. Perturbative rho is installed automatically. The G2 contribution needs a direct Borel-moment implementation because it is distributional in s. For an immediate perturbative numerical value use:", "Text"],
+  Cell["The line above is formal unless every requested rho is installed. For numerical work, use the Numeric* functions. Perturbative rho is installed automatically and G2 is evaluated as a direct Borel moment.", "Text"],
   Cell[BoxData[
     RowBox[{"NumericMixingAngleDegrees", "[", RowBox[{"10", ",", "55", ",", "\"pert\""}], "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"NumericMixingAngleDegrees", "[", RowBox[{"10", ",", "55", ",", "\"total\""}], "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"NumericOPESummary", "[", RowBox[{"10", ",", "55"}], "]"}]
   ], "Input"],
   Cell[BoxData[
     RowBox[{"OPESummary", "[", RowBox[{"M2", ",", "s0"}], "]"}]
@@ -87,7 +93,7 @@ Notebook[{
         ",",
         RowBox[{"{", RowBox[{"50", ",", "60", ",", "5"}], "}"}],
         ",",
-        "\"pert\""
+        "\"total\""
       }], "]"}]
   ], "Input"],
   Cell[BoxData[
@@ -97,7 +103,15 @@ Notebook[{
         ",",
         RowBox[{"{", RowBox[{"50", ",", "60", ",", "5"}], "}"}],
         ",",
-        "\"pert\""
+        "\"total\""
+      }], "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"OPEConvergenceDataset", "[", RowBox[
+      {
+        RowBox[{"{", RowBox[{"8", ",", "12", ",", "1"}], "}"}],
+        ",",
+        RowBox[{"{", RowBox[{"50", ",", "60", ",", "5"}], "}"}]
       }], "]"}]
   ], "Input"],
   Cell[BoxData[
@@ -109,7 +123,7 @@ Notebook[{
         ",",
         "$BcMixingDefaultParameters",
         ",",
-        "\"pert\""
+        "\"total\""
       }], "]"}]
   ], "Input"],
   Cell[BoxData[
@@ -121,7 +135,7 @@ Notebook[{
         ",",
         "$BcMixingDefaultParameters",
         ",",
-        "\"pert\""
+        "\"total\""
       }], "]"}]
   ], "Input"],
   Cell[BoxData[
@@ -133,7 +147,7 @@ Notebook[{
         ",",
         "$BcMixingDefaultParameters",
         ",",
-        "\"pert\""
+        "\"total\""
       }], "]"}]
   ], "Input"],
 

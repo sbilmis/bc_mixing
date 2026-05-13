@@ -18,11 +18,13 @@
     Implemented numerical spectral densities:
       - perturbative heavy-heavy loop
 
+    Implemented direct Borel moments:
+      - dimension-4 gluon condensate <g_s^2 G^2>
+
     Important:
-      The G2 algebra is available through Correlator[channel, "G2"] and
-      FeynmanParameterForm[channel, "G2"], but its contribution to the Borel
-      sum rule is distributional in s.  It should be added as a direct Borel
-      moment, not as an ordinary smooth rho(s), in the next step.
+      The G2 contribution is not treated as an ordinary smooth rho(s).
+      It is evaluated as a direct Borel moment because its spectral
+      representation contains delta-function derivative terms.
 
     Not implemented in v1:
       - dimension-6 triple-gluon condensate <g_s^3 G^3>
@@ -71,11 +73,12 @@ If[NameQ["FeynCalc`FCSetDiracGammaScheme"],
 
 ClearAll[
   mb, mc, M2, s0, s, G2, eps,
-  k, p, mu, nu, al, be, rh, si, x, z
+  k, p, mu, nu, al, be, rh, si, x, z, xi
 ];
 
 $BcMixingNc = 3;
 $BcMixingKeepRawTensorI = True;
+$BcMixingG2BorelPhase = -I;
 $BcMixingChannels = <|
   "AA" -> {"A", "A"},
   "AB" -> {"A", "B"},
@@ -383,6 +386,83 @@ InstallPerturbativeSpectralDensities[] := (
 
 InstallPerturbativeSpectralDensities[];
 
+(* ---------------------------------------------------------------------- *)
+(* Direct Borel moment for the dimension-4 gluon condensate                *)
+(* ---------------------------------------------------------------------- *)
+
+SBar[xvar_] := (mc^2 xvar + mb^2 (1 - xvar))/(xvar (1 - xvar));
+
+CleanFeynmanParameterTerms[channel_String, order_String] :=
+  CleanFeynmanParameterTerms[channel, order] = Select[
+    FeynmanParameterForm[channel, order] /. eps -> 0,
+    #[[1]] =!= 0 && FreeQ[#, ComplexInfinity | Indeterminate | DirectedInfinity] &
+  ];
+
+SimplexAmplitude[channel_String, order_String, xvar_] := Module[
+  {terms},
+  terms = CleanFeynmanParameterTerms[channel, order];
+  Total[(#[[1]] #[[2]]) & /@ terms] /. {x[1] -> xvar, x[2] -> 1 - xvar}
+];
+
+G2SimplexAmplitude[channel_String] :=
+  G2SimplexAmplitude[channel] = (
+    $BcMixingG2BorelPhase SimplexAmplitude[channel, "G2", xi] //
+      Together //
+      Simplify
+  );
+
+BorelTransformQ2[expr_, xvar_, m2_] := Module[
+  {q2, tau, sb, transformed, maxPower = 8},
+  sb = SBar[xvar];
+  transformed = expr /. s -> -q2 /. q2 -> tau - sb;
+  transformed = Apart[Together[transformed], tau] // Expand;
+  Exp[-sb/m2] Sum[
+    Coefficient[transformed, tau, -n]/(Factorial[n - 1] m2^(n - 1)),
+    {n, 1, maxPower}
+  ] // Simplify
+];
+
+G2BorelIntegrandExpression[channel_String] :=
+  G2BorelIntegrandExpression[channel] =
+    BorelTransformQ2[G2SimplexAmplitude[channel], xi, M2];
+
+ContinuumXLimits[continuumVal_?NumericQ, params_: $BcMixingDefaultParameters] := Module[
+  {rules, mbv, mcv, lam, xm, xp},
+  rules = ParameterRules[params];
+  mbv = N[mb /. rules];
+  mcv = N[mc /. rules];
+  lam = N[KallenLambda[continuumVal, mbv, mcv]];
+  If[lam <= 0, Return[$Failed]];
+  xm = (continuumVal + mbv^2 - mcv^2 - Sqrt[lam])/(2 continuumVal);
+  xp = (continuumVal + mbv^2 - mcv^2 + Sqrt[lam])/(2 continuumVal);
+  Sort[{xm, xp}]
+];
+
+Options[NumericBorelPiG2] = Options[NIntegrate];
+
+NumericBorelPiG2[
+  channel_String,
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] := Module[
+  {lims, integrand},
+  ValidateChannel[channel];
+  lims = ContinuumXLimits[continuumVal, params];
+  If[lims === $Failed, Return[0.]];
+  integrand = Evaluate[
+    G2BorelIntegrandExpression[channel] /.
+      ParameterRules[params] /.
+      M2 -> m2Val
+  ];
+  NIntegrate[
+    integrand,
+    {xi, lims[[1]], lims[[2]]},
+    opts
+  ]
+];
+
 SpectralDensity[channel_String, order_String, var_: s] := Module[
   {ch = ValidateChannel[channel], ord = ValidateOrder[order]},
   Which[
@@ -440,6 +520,27 @@ Options[NumericBorelPi] = Options[NIntegrate];
 
 NumericBorelPi[
   channel_String,
+  "G2",
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] :=
+  NumericBorelPiG2[channel, m2Val, continuumVal, params, opts];
+
+NumericBorelPi[
+  channel_String,
+  "total",
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] :=
+  NumericBorelPi[channel, "pert", m2Val, continuumVal, params, opts] +
+  NumericBorelPi[channel, "G2", m2Val, continuumVal, params, opts];
+
+NumericBorelPi[
+  channel_String,
   order_String : "pert",
   m2Val_?NumericQ,
   continuumVal_?NumericQ,
@@ -468,7 +569,7 @@ NumericBorelPi[
 ];
 
 NumericBorelPi::norho =
-  "No installed spectral density for channel `1`, order `2`. Currently v1 installs perturbative rho automatically; G2 still requires the condensate spectral distribution/direct Borel implementation.";
+  "No installed spectral density for channel `1`, order `2`. Use order \"pert\", \"G2\", or \"total\" for the implemented numerical moments.";
 
 NumericMixingAngle[
   m2Val_?NumericQ,
@@ -517,6 +618,27 @@ NumericMixingAngleRawDegrees[
   opts : OptionsPattern[NumericBorelPi]
 ] :=
   N[180/Pi NumericMixingAngleRaw[m2Val, continuumVal, order, params, opts]];
+
+NumericOPESummary[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[NumericBorelPi]
+] := Association[
+  Table[
+    Module[
+      {pert = NumericBorelPi[ch, "pert", m2Val, continuumVal, params, opts],
+       g2 = NumericBorelPi[ch, "G2", m2Val, continuumVal, params, opts]},
+      ch -> <|
+        "pert" -> pert,
+        "G2" -> g2,
+        "total" -> pert + g2,
+        "G2OverPert" -> g2/pert
+      |>
+    ],
+    {ch, {"AA", "AB", "BB"}}
+  ]
+];
 
 (* ---------------------------------------------------------------------- *)
 (* Borel-window and continuum-threshold scan helpers                       *)
@@ -641,6 +763,65 @@ MixingAngleTable[
     Alignment -> Center
   ]
 ];
+
+OPEConvergenceRecord[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[NumericBorelPi]
+] := Module[
+  {summary, ratios, thetaPert, thetaTotal},
+  summary = NumericOPESummary[m2Val, continuumVal, params, opts];
+  ratios = AssociationMap[summary[#]["G2OverPert"] &, {"AA", "AB", "BB"}];
+  thetaPert = NumericMixingAngleDegrees[m2Val, continuumVal, "pert", params, opts];
+  thetaTotal = NumericMixingAngleDegrees[m2Val, continuumVal, "total", params, opts];
+  <|
+    "M2" -> N[m2Val],
+    "s0" -> N[continuumVal],
+    "AA_G2OverPert" -> ratios["AA"],
+    "AB_G2OverPert" -> ratios["AB"],
+    "BB_G2OverPert" -> ratios["BB"],
+    "MaxAbsG2OverPert" -> Max[Abs[Values[ratios]]],
+    "ThetaPertDeg" -> thetaPert,
+    "ThetaTotalDeg" -> thetaTotal,
+    "DeltaThetaDeg" -> thetaTotal - thetaPert
+  |>
+];
+
+Options[OPEConvergenceScan] = Options[NumericBorelPi];
+
+OPEConvergenceScan[
+  m2Spec_,
+  s0Spec_,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] := Module[
+  {m2Vals = ScanValues[m2Spec], s0Vals = ScanValues[s0Spec]},
+  If[m2Vals === $Failed || s0Vals === $Failed, Return[$Failed]];
+  Flatten[
+    Table[
+      OPEConvergenceRecord[m2v, s0v, params, opts],
+      {m2v, m2Vals},
+      {s0v, s0Vals}
+    ],
+    1
+  ]
+];
+
+OPEConvergenceDataset[
+  m2Spec_,
+  s0Spec_,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[OPEConvergenceScan]
+] :=
+  Dataset[OPEConvergenceScan[m2Spec, s0Spec, params, opts]];
+
+OPESummary[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  params_: $BcMixingDefaultParameters
+] :=
+  NumericOPESummary[m2Val, continuumVal, params];
 
 OPESummary[m2_: M2, continuum_: s0, params_: $BcMixingDefaultParameters] := Association[
   Table[

@@ -26,10 +26,10 @@ The calculation currently supports:
 - FeynCalc algebra for the `AA`, `AB`, and `BB` correlators.
 - Perturbative spectral densities \(\rho^{ij}_{\rm pert}(s)\).
 - Numerical Borel moments and perturbative mixing angle.
+- Direct Borel moments for the dimension-4 gluon condensate
+  \(\langle g_s^2G^2\rangle\).
 - Scan/table/plot helpers for trial \(M^2\) and \(s_0\) windows.
-- FeynCalc algebra for the dimension-4 gluon condensate
-  \(\langle g_s^2G^2\rangle\), not yet converted into the final numerical
-  Borel moment.
+- OPE-convergence scan helpers comparing \(G^2\) to the perturbative moment.
 
 The dimension-6 triple-gluon condensate \(\langle g_s^3G^3\rangle\) is not
 implemented in this version.
@@ -89,16 +89,29 @@ These two values differ by \(90^\circ\). The function
 `NumericMixingAngleDegrees` reports the conventional principal branch in
 \([-45^\circ,45^\circ]\).
 
-This perturbative value is not yet the final QCD sum-rule prediction. The
-next required physics step is adding the \(\langle g_s^2G^2\rangle\) Borel
-moment.
+The perturbative value is useful for debugging conventions. The first
+`"total"` value, including \(\langle g_s^2G^2\rangle\), is now available:
+
+```wl
+NumericMixingAngleDegrees[10, 55, "total"]
+```
+
+Current result:
+
+```wl
+-8.262530639106624
+```
+
+At this point the condensate correction is small, so the total angle is close
+to the perturbative one. This should still be tested across the accepted
+Borel window before quoting a paper-level result.
 
 ## Borel-Window And Threshold Scans
 
 Use `{min,max,step}` specifications for trial windows:
 
 ```wl
-MixingAngleScan[{8, 12, 1}, {50, 60, 5}, "pert"]
+MixingAngleScan[{8, 12, 1}, {50, 60, 5}, "total"]
 ```
 
 This returns a list of associations with:
@@ -114,31 +127,31 @@ This returns a list of associations with:
 For a notebook-friendly view:
 
 ```wl
-MixingAngleDataset[{8, 12, 1}, {50, 60, 5}, "pert"]
-MixingAngleTable[{8, 12, 1}, {50, 60, 5}, "pert"]
+MixingAngleDataset[{8, 12, 1}, {50, 60, 5}, "total"]
+MixingAngleTable[{8, 12, 1}, {50, 60, 5}, "total"]
 ```
 
 For plotting:
 
 ```wl
-PlotMixingAngle[{8, 12}, 55, $BcMixingDefaultParameters, "pert"]
-PlotMixingAngleS0[10, {50, 60}, $BcMixingDefaultParameters, "pert"]
-MixingAngleContourPlot[{8, 12}, {50, 60}, $BcMixingDefaultParameters, "pert"]
+PlotMixingAngle[{8, 12}, 55, $BcMixingDefaultParameters, "total"]
+PlotMixingAngleS0[10, {50, 60}, $BcMixingDefaultParameters, "total"]
+MixingAngleContourPlot[{8, 12}, {50, 60}, $BcMixingDefaultParameters, "total"]
 ```
 
-A quick perturbative scan currently gives values near \(-8^\circ\) across
+A quick total scan currently gives values near \(-8^\circ\) across
 the example window:
 
 ```wl
-MixingAngleMatrix[{8, 12, 2}, {50, 60, 5}, "pert"]
+MixingAngleMatrix[{8, 12, 2}, {50, 60, 5}, "total"]
 ```
 
 returns approximately
 
 ```wl
-{{-8.66, -8.40, -8.20},
- {-8.57, -8.27, -8.02},
- {-8.52, -8.19, -7.91}}
+{{-8.64, -8.38, -8.18},
+ {-8.57, -8.26, -8.02},
+ {-8.51, -8.18, -7.91}}
 ```
 
 for \(M^2=\{8,10,12\}\) and \(s_0=\{50,55,60\}\).
@@ -163,6 +176,21 @@ light-quark propagator is expanded in \(x\)-space condensates. For \(B_c\),
 coordinate space would lead to products of massive Bessel functions for the
 \(b\) and \(c\) propagators and is less direct for FeynCalc.
 
+For OPE convergence checks:
+
+```wl
+NumericOPESummary[10, 55]
+OPEConvergenceDataset[{8, 12, 1}, {50, 60, 5}]
+```
+
+At \(M^2=10\), \(s_0=55\), the current ratios are approximately:
+
+```wl
+AA: G2/pert = -0.00254
+AB: G2/pert = -0.00220
+BB: G2/pert = -0.00140
+```
+
 ## Gluon Condensate Status
 
 The script already builds the dimension-4 gluon-condensate algebra from
@@ -180,12 +208,12 @@ Correlator["AA", "G2"]
 FeynmanParameterForm["AA", "G2"]
 ```
 
-However, the \(\langle g_s^2G^2\rangle\) contribution should not be treated
-as a smooth ordinary spectral density \(\rho_{G^2}(s)\). The Feynman-parameter
-forms contain powers of denominators that generate delta functions and
-derivatives of delta functions in the spectral representation.
+The \(\langle g_s^2G^2\rangle\) contribution is not treated as a smooth
+ordinary spectral density \(\rho_{G^2}(s)\). The Feynman-parameter forms
+contain powers of denominators that generate delta functions and derivatives
+of delta functions in the spectral representation.
 
-The correct next implementation step is a direct Borel moment:
+The code therefore uses a direct Borel moment:
 
 \[
 \Pi^{ij}_{G^2}(M^2,s_0)
@@ -203,14 +231,13 @@ with
 {x(1-x)} .
 \]
 
-After this is implemented, the physical numerical angle should be computed
-from
+The physical numerical angle is computed from
 
 \[
 \Pi^{ij}=\Pi^{ij}_{\rm pert}+\Pi^{ij}_{G^2}.
 \]
 
-Then the code should allow
+The code now allows
 
 ```wl
 NumericMixingAngleDegrees[M2, s0, "total"]
@@ -218,14 +245,21 @@ NumericMixingAngleDegrees[M2, s0, "total"]
 
 where `"total"` means perturbative plus \(\langle g_s^2G^2\rangle\).
 
+Implementation caveat: the direct \(G^2\) Borel transform uses the phase
+convention `-I` to remove the loop-integration prefactor from the
+Feynman-parameter amplitudes. This is consistent with the current
+perturbative convention and gives a small OPE correction, but it should be
+cross-checked against an independent derivation before finalizing the paper.
+
 ## Paper Notes
 
 The current perturbative scan is useful for debugging conventions and finding
 a rough stability pattern, but it should not be quoted as the final result.
 For a paper-level prediction we still need:
 
-- Direct \(\langle g_s^2G^2\rangle\) Borel moments.
-- OPE convergence checks, especially \(|\Pi_{G^2}| < |\Pi_{\rm pert}|\).
+- Independent validation of the \(\langle g_s^2G^2\rangle\) Borel formula.
+- OPE convergence checks across the final window, especially
+  \(|\Pi_{G^2}| < |\Pi_{\rm pert}|\).
 - Pole-dominance and continuum-threshold criteria.
 - A chosen \(M^2\) and \(s_0\) working region.
 - Uncertainty propagation over \(m_b\), \(m_c\), \(G^2\), \(M^2\), and \(s_0\).
