@@ -1,0 +1,517 @@
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{slashed}
+\usepackage{hyperref}
+
+\title{Momentum-Space QCD Sum-Rule Setup for the $B_c(1P)$ Axial-Vector Mixing Angle}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Purpose and conventions}
+
+We study the mixing between the two axial-vector $B_c(1P)$ basis states
+associated with the ${}^3P_1$ and ${}^1P_1$ structures.  The current
+implementation follows the Aliev et al. mixing-angle method, but the OPE is
+evaluated in momentum space because both quark lines are heavy.
+
+This note records the calculation implemented in
+\texttt{BcMixingMomentum.wl}.  It is written so that every convention and
+intermediate object can be checked independently before using the numerical
+angle in a paper.
+
+The quark content convention is
+\begin{equation}
+  B_c^+ = \bar b c .
+\end{equation}
+
+The two interpolating currents are taken as
+\begin{align}
+  J^A_\mu &= \bar b\,\gamma_\mu\gamma_5\,c,\\
+  J^B_\mu &= i\,\bar b\,\sigma_{\mu\alpha}p^\alpha\gamma_5\,c,
+\end{align}
+where
+\begin{equation}
+  \sigma_{\mu\nu}=\frac{i}{2}[\gamma_\mu,\gamma_\nu].
+\end{equation}
+The explicit factor of $i$ in $J^B_\mu$ is retained.  This is important
+because FeynCalc's \texttt{DiracSigma} already contains the conventional
+$i/2$ commutator.
+
+If the opposite flavor convention is used, for example $B_c^- = \bar c b$,
+the sign of the quoted angle can change.  The absolute convention must
+therefore be kept fixed when comparing to other papers.
+
+\section{Implementation map}
+
+The main code objects are:
+\begin{itemize}
+  \item \texttt{Correlator[channel, order]}:
+  $\Pi_1^{ij}(p^2)$ after FeynCalc Dirac algebra and spin projection.
+  \item \texttt{SpectralDensity[channel, ``pert'', s]}:
+  $\rho_{\rm pert}^{ij}(s)$.
+  \item \texttt{NumericBorelPi[channel, order, M2, s0]}:
+  $\Pi^{ij}_{\rm order}(M^2,s_0)$.
+  \item \texttt{NumericMixingAngleDegrees[M2, s0, ``total'']}:
+  $\theta(M^2,s_0)$ from
+  $\Pi_{\rm pert}^{ij}+\Pi_{G^2}^{ij}$.
+\end{itemize}
+
+The implemented OPE orders are
+\begin{equation}
+  \text{pert},\qquad G^2,\qquad \text{total}=\text{pert}+G^2.
+\end{equation}
+The dimension-6 triple-gluon condensate $\langle g_s^3G^3\rangle$ is not
+included in the present file.
+
+\section{Correlators and spin-1 projection}
+
+Define
+\begin{equation}
+  \Pi_{\mu\nu}^{ij}(p)
+  =
+  i\int d^4x\,e^{ip\cdot x}
+  \langle 0 | T\{J^i_\mu(x)J^{j\dagger}_\nu(0)\}|0\rangle,
+  \qquad i,j\in\{A,B\}.
+\end{equation}
+
+The invariant amplitude used for the axial-vector spin-1 state is extracted
+with
+\begin{equation}
+  P^{\mu\nu}_{(1)}
+  =
+  \frac{1}{3}
+  \left(
+    g^{\mu\nu}
+    -
+    \frac{p^\mu p^\nu}{p^2}
+  \right),
+\end{equation}
+so that
+\begin{equation}
+  \Pi_1^{ij}(p^2)=P^{\mu\nu}_{(1)}\Pi_{\mu\nu}^{ij}(p).
+\end{equation}
+
+The mixing angle is then obtained from
+\begin{equation}
+  \tan 2\theta
+  =
+  -\frac{2\Pi_1^{AB}}{\Pi_1^{AA}-\Pi_1^{BB}}.
+\end{equation}
+Numerically we use the quadrant-safe definition
+\begin{equation}
+  \theta_{\rm raw}
+  =
+  \frac{1}{2}
+  \operatorname{atan2}
+  \left(
+    -2\Pi_1^{AB},
+    \Pi_1^{AA}-\Pi_1^{BB}
+  \right),
+\end{equation}
+and quote the principal branch
+\begin{equation}
+  \theta
+  =
+  \theta_{\rm raw}
+  -
+  \frac{\pi}{2}
+  \operatorname{Round}
+  \left(
+    \frac{\theta_{\rm raw}}{\pi/2}
+  \right),
+  \qquad
+  \theta\in[-45^\circ,45^\circ].
+\end{equation}
+
+\section{Momentum-space OPE}
+
+The perturbative heavy-quark propagator is
+\begin{equation}
+  S_Q^{(0)}(k)
+  =
+  \frac{\slashed{k}+m_Q}{k^2-m_Q^2}.
+\end{equation}
+
+For the dimension-4 gluon condensate we use the background-field expansion
+\begin{equation}
+  S_Q(k)
+  =
+  S_Q^{(0)}(k)
+  +
+  g_sG_A^{\alpha\beta}T^A S_{Q,\alpha\beta}^{(G)}(k)
+  +
+  S_Q^{(G^2)}(k),
+\end{equation}
+where
+\begin{align}
+  S_{Q,\alpha\beta}^{(G)}(k)
+  &=
+  -\frac{1}{4}
+  \frac{
+    \sigma_{\alpha\beta}(\slashed{k}+m_Q)
+    +
+    (\slashed{k}+m_Q)\sigma_{\alpha\beta}
+  }
+  {(k^2-m_Q^2)^2},
+  \\
+  S_Q^{(G^2)}(k)
+  &=
+  \frac{\langle g_s^2G^2\rangle}{12}
+  m_Q
+  \frac{k^2+m_Q\slashed{k}}
+  {(k^2-m_Q^2)^4}.
+\end{align}
+Equivalently,
+\begin{equation}
+  g_sG_A^{\alpha\beta}T^A S_{Q,\alpha\beta}^{(G)}(k)
+  =
+  -\frac{g_sG_A^{\alpha\beta}T^A}{4}
+  \frac{
+    \sigma_{\alpha\beta}(\slashed{k}+m_Q)
+    +
+    (\slashed{k}+m_Q)\sigma_{\alpha\beta}
+  }
+  {(k^2-m_Q^2)^2}.
+\end{equation}
+The one-gluon fields are contracted with
+\begin{equation}
+  \langle g_s^2G_A^{\alpha\beta}G_B^{\rho\sigma}\rangle
+  =
+  \frac{\delta_{AB}}{96}
+  \langle g_s^2G^2\rangle
+  \left(
+    g^{\alpha\rho}g^{\beta\sigma}
+    -
+    g^{\alpha\sigma}g^{\beta\rho}
+  \right),
+\end{equation}
+and
+\begin{equation}
+  \operatorname{Tr}(T^AT^B)=\frac{\delta^{AB}}{2}.
+\end{equation}
+Thus the color factor for the $S^{(G)}S^{(G)}$ piece is
+\begin{equation}
+  \frac{N_c^2-1}{192}\langle g_s^2G^2\rangle,
+  \qquad N_c=3.
+\end{equation}
+
+The three projected OPE contributions are generated from
+\begin{align}
+  \Pi^{AA}_1 &\sim
+  P^{\mu\nu}_{(1)}
+  \operatorname{Tr}
+  \left[
+    \gamma_\mu\gamma_5
+    S_c(k)
+    \gamma_\nu\gamma_5
+    S_b(k-p)
+  \right],\\
+  \Pi^{AB}_1 &\sim
+  P^{\mu\nu}_{(1)}
+  \operatorname{Tr}
+  \left[
+    \gamma_\mu\gamma_5
+    S_c(k)
+    i\sigma_{\nu\alpha}p^\alpha\gamma_5
+    S_b(k-p)
+  \right],\\
+  \Pi^{BB}_1 &\sim
+  P^{\mu\nu}_{(1)}
+  \operatorname{Tr}
+  \left[
+    i\sigma_{\mu\alpha}p^\alpha\gamma_5
+    S_c(k)
+    i\sigma_{\nu\beta}p^\beta\gamma_5
+    S_b(k-p)
+  \right].
+\end{align}
+
+\section{Perturbative spectral densities}
+
+For the perturbative loop, impose the two-particle cut
+\begin{equation}
+  k^2=m_c^2,\qquad (k-p)^2=m_b^2,
+\end{equation}
+which gives
+\begin{equation}
+  k\cdot p=\frac{s+m_c^2-m_b^2}{2},
+  \qquad s=p^2.
+\end{equation}
+
+Define
+\begin{equation}
+  \lambda(s,m_b,m_c)
+  =
+  s^2+m_b^4+m_c^4
+  -2sm_b^2-2sm_c^2-2m_b^2m_c^2 .
+\end{equation}
+The perturbative spectral densities are implemented as
+\begin{equation}
+  \rho_{\rm pert}^{ij}(s)
+  =
+  \frac{N_c}{16\pi^2}
+  \frac{\sqrt{\lambda(s,m_b,m_c)}}{s}
+  N^{ij}(s),
+\end{equation}
+with
+\begin{align}
+  N^{AA}(s)
+  &=
+  -\frac{2}{s}
+  \left[(m_b+m_c)^2-s\right]
+  \left[(m_b-m_c)^2+2s\right],
+  \\
+  N^{AB}(s)
+  &=
+  6(m_b-m_c)\left[(m_b+m_c)^2-s\right],
+  \\
+  N^{BB}(s)
+  &=
+  2\left[
+    -2(m_b^2-m_c^2)^2
+    +(m_b^2-6m_bm_c+m_c^2)s
+    +s^2
+  \right].
+\end{align}
+Equivalently, after setting $N_c=3$,
+\begin{align}
+  \rho_{\rm pert}^{AA}(s)
+  &=
+  -\frac{3}{8\pi^2s^2}
+  \left[(m_b+m_c)^2-s\right]
+  \left[(m_b-m_c)^2+2s\right]
+  \sqrt{\lambda(s,m_b,m_c)},\\
+  \rho_{\rm pert}^{AB}(s)
+  &=
+  \frac{9}{8\pi^2s}
+  (m_b-m_c)
+  \left[(m_b+m_c)^2-s\right]
+  \sqrt{\lambda(s,m_b,m_c)},\\
+  \rho_{\rm pert}^{BB}(s)
+  &=
+  \frac{3}{8\pi^2s}
+  \left[
+    -2(m_b^2-m_c^2)^2
+    +(m_b^2-6m_bm_c+m_c^2)s
+    +s^2
+  \right]
+  \sqrt{\lambda(s,m_b,m_c)}.
+\end{align}
+
+The perturbative Borel moments are
+\begin{equation}
+  \Pi_{\rm pert}^{ij}(M^2,s_0)
+  =
+  \int_{(m_b+m_c)^2}^{s_0}
+  ds\,
+  e^{-s/M^2}
+  \rho_{\rm pert}^{ij}(s).
+\end{equation}
+
+\section{Dimension-4 gluon condensate}
+
+The implemented condensate contribution is
+\begin{equation}
+  \Pi_{G^2}^{ij}
+  =
+  \Pi^{ij}[S_c^{(G^2)}S_b^{(0)}]
+  +
+  \Pi^{ij}[S_c^{(0)}S_b^{(G^2)}]
+  +
+  \Pi^{ij}[S_c^{(G)}S_b^{(G)}].
+\end{equation}
+
+After Feynman parametrization the terms have the schematic form
+\begin{equation}
+  \mathcal{A}_{G^2}^{ij}(x_1,x_2,s)
+  =
+  \sum_r
+  C_r^{ij}(x_1,x_2,s)
+  \left[
+    m_c^2x_1^2
+    +(m_b^2+m_c^2-s)x_1x_2
+    +m_b^2x_2^2
+  \right]^{-n_r}.
+\end{equation}
+The code then fixes the simplex by
+\begin{equation}
+  x_1=x,\qquad x_2=1-x.
+\end{equation}
+This gives
+\begin{equation}
+  \Delta(x,s)
+  =
+  m_c^2x+m_b^2(1-x)-s\,x(1-x).
+\end{equation}
+
+The $G^2$ terms are not treated as ordinary smooth spectral densities.  We
+instead use a direct Borel transform.  Set $s=-Q^2$ and write
+\begin{equation}
+  \Delta(x,-Q^2)
+  =
+  x(1-x)
+  \left[Q^2+\bar s(x)\right],
+\end{equation}
+where
+\begin{equation}
+  \bar s(x)
+  =
+  \frac{m_c^2x+m_b^2(1-x)}{x(1-x)}.
+\end{equation}
+
+The Feynman-parameter amplitude is decomposed as
+\begin{equation}
+  -i\,\mathcal{A}_{G^2}^{ij}(x,-Q^2)
+  =
+  \sum_{n\geq 1}
+  \frac{a_n^{ij}(x)}
+  {\left[Q^2+\bar s(x)\right]^n}
+  +
+  \text{polynomial subtraction terms}.
+\end{equation}
+The polynomial subtraction terms vanish after the Borel transform.  The
+working phase convention is the explicit factor $-i$ shown above.  This is a
+bookkeeping convention for removing the loop-integration prefactor returned
+by FeynCalc's Feynman-parameter amplitude.  This is the convention that
+should be independently checked.
+
+We use
+\begin{equation}
+  \mathcal{B}_{M^2}
+  \left[
+    \frac{1}{(Q^2+\bar s)^n}
+  \right]
+  =
+  \frac{1}{(n-1)!\,(M^2)^{n-1}}
+  e^{-\bar s/M^2}.
+\end{equation}
+Thus
+\begin{equation}
+  \Pi_{G^2}^{ij}(M^2,s_0)
+  =
+  \int_{x_-}^{x_+}
+  dx\,
+  e^{-\bar s(x)/M^2}
+  \sum_{n\geq1}
+  \frac{a_n^{ij}(x)}
+  {(n-1)!\,(M^2)^{n-1}}.
+\end{equation}
+
+The continuum restriction is
+\begin{equation}
+  \bar s(x)\leq s_0,
+\end{equation}
+which gives
+\begin{equation}
+  x_\pm
+  =
+  \frac{
+    s_0+m_b^2-m_c^2
+    \pm
+    \sqrt{\lambda(s_0,m_b,m_c)}
+  }
+  {2s_0}.
+\end{equation}
+
+\section{Total Borel moments and numerical test point}
+
+The total moments used in the current numerical result are
+\begin{equation}
+  \Pi^{ij}(M^2,s_0)
+  =
+  \Pi_{\rm pert}^{ij}(M^2,s_0)
+  +
+  \Pi_{G^2}^{ij}(M^2,s_0).
+\end{equation}
+
+The current default numerical inputs are
+\begin{align}
+  m_b &= 4.18~\text{GeV},\\
+  m_c &= 1.27~\text{GeV},\\
+  \langle g_s^2G^2\rangle &= 4\pi^2(0.012)~\text{GeV}^4,\\
+  M^2 &= 10~\text{GeV}^2,\\
+  s_0 &= 55~\text{GeV}^2.
+\end{align}
+For this point,
+\begin{equation}
+  x_- = 0.3322728664,\qquad
+  x_+ = 0.9560816791.
+\end{equation}
+
+The perturbative moments are
+\begin{align}
+  \Pi_{\rm pert}^{AA} &= 0.1441716826,\\
+  \Pi_{\rm pert}^{AB} &= -0.5731095699,\\
+  \Pi_{\rm pert}^{BB} &= 4.0042965387.
+\end{align}
+The gluon-condensate moments are
+\begin{align}
+  \Pi_{G^2}^{AA} &= -0.0003658277,\\
+  \Pi_{G^2}^{AB} &= 0.0012586339,\\
+  \Pi_{G^2}^{BB} &= -0.0056104146.
+\end{align}
+Thus
+\begin{align}
+  \Pi_{\rm total}^{AA} &= 0.1438058549,\\
+  \Pi_{\rm total}^{AB} &= -0.5718509360,\\
+  \Pi_{\rm total}^{BB} &= 3.9986861241.
+\end{align}
+
+The corresponding angles are
+\begin{align}
+  \theta_{\rm pert} &= -8.269086981^\circ,\\
+  \theta_{\rm pert+G^2} &= -8.262530639^\circ.
+\end{align}
+At this point the relative condensate corrections are
+\begin{align}
+  \frac{\Pi_{G^2}^{AA}}{\Pi_{\rm pert}^{AA}} &= -0.002537,\\
+  \frac{\Pi_{G^2}^{AB}}{\Pi_{\rm pert}^{AB}} &= -0.002196,\\
+  \frac{\Pi_{G^2}^{BB}}{\Pi_{\rm pert}^{BB}} &= -0.001401.
+\end{align}
+
+\section{How to reproduce the numerical check}
+
+In Mathematica, load the implementation with
+\begin{verbatim}
+SetDirectory["/Users/sbilmis/Bc_mixing"];
+Get["BcMixingMomentum.wl"];
+\end{verbatim}
+Then evaluate
+\begin{verbatim}
+NumericOPESummary[10, 55]
+NumericMixingAngleDegrees[10, 55, "pert"]
+NumericMixingAngleDegrees[10, 55, "total"]
+\end{verbatim}
+For window studies one can scan
+\begin{verbatim}
+MixingAngleTable[{8, 12, 1}, {50, 60, 5}, "total"]
+OPEConvergenceDataset[{8, 12, 1}, {50, 60, 5}]
+\end{verbatim}
+
+\section{Checklist for independent verification}
+
+A theorist can check the calculation in the following order:
+\begin{enumerate}
+  \item Confirm the current convention, especially the explicit factor of
+  $i$ in $J^B_\mu$ and the definition of $\sigma_{\mu\nu}$.
+  \item Reproduce the three projected perturbative traces and verify the
+  numerator functions $N^{AA}(s)$, $N^{AB}(s)$, and $N^{BB}(s)$.
+  \item Check the two-body phase-space normalization
+  $N_c\sqrt{\lambda}/(16\pi^2s)$ used in $\rho_{\rm pert}^{ij}(s)$.
+  \item Verify the background-field propagator terms and the color factor in
+  the $S^{(G)}S^{(G)}$ contribution.
+  \item Independently derive the direct Borel formula for the $G^2$ terms,
+  including the $-i$ phase convention.
+  \item Check that $\Pi_{G^2}/\Pi_{\rm pert}$ remains small in the accepted
+  Borel window.
+  \item Determine the final working window using OPE convergence, Borel
+  stability, and pole-dominance criteria.
+\end{enumerate}
+
+\end{document}
