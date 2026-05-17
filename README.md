@@ -16,8 +16,11 @@ The calculation currently supports:
 - Momentum-space correlators for the currents
   \[
   J^A_\mu=\bar b\gamma_\mu\gamma_5 c,\qquad
-  J^B_\mu=i\bar b\sigma_{\mu\alpha}p^\alpha\gamma_5 c .
+  J^B_\mu=i\bar b\sigma_{\mu\alpha}
+  \frac{p^\alpha}{m_b+m_c}\gamma_5 c .
   \]
+  The denominator in \(J^B_\mu\) is essential: it makes \(J^A_\mu\) and
+  \(J^B_\mu\) have the same mass dimension.
 - Spin-1 projection with
   \[
   P_{\mu\nu}^{(1)}=\frac{1}{3}
@@ -30,6 +33,8 @@ The calculation currently supports:
   \(\langle g_s^2G^2\rangle\).
 - Scan/table/plot helpers for trial \(M^2\) and \(s_0\) windows.
 - OPE-convergence scan helpers comparing \(G^2\) to the perturbative moment.
+- Mass-dimension checks for the current basis and perturbative spectral
+  densities.
 
 The dimension-6 triple-gluon condensate \(\langle g_s^3G^3\rangle\) is not
 implemented in this version.
@@ -70,7 +75,7 @@ NumericMixingAngleDegrees[10, 55, "pert"]
 Current result:
 
 ```wl
--8.26908698135649
+43.72611894294242
 ```
 
 The raw quadrant-safe solution is also available:
@@ -82,12 +87,12 @@ NumericMixingAngleRawDegrees[10, 55, "pert"]
 which gives
 
 ```wl
-81.73091301864352
+43.72611894294242
 ```
 
-These two values differ by \(90^\circ\). The function
-`NumericMixingAngleDegrees` reports the conventional principal branch in
-\([-45^\circ,45^\circ]\).
+For this normalized-current convention the raw and principal-branch values
+are the same at the displayed point. The function `NumericMixingAngleDegrees`
+reports the conventional principal branch in \([-45^\circ,45^\circ]\).
 
 The perturbative value is useful for debugging conventions. The first
 `"total"` value, including \(\langle g_s^2G^2\rangle\), is now available:
@@ -99,7 +104,7 @@ NumericMixingAngleDegrees[10, 55, "total"]
 Current result:
 
 ```wl
--8.262530639106624
+43.74742666040357
 ```
 
 At this point the condensate correction is small, so the total angle is close
@@ -139,7 +144,7 @@ PlotMixingAngleS0[10, {50, 60}, $BcMixingDefaultParameters, "total"]
 MixingAngleContourPlot[{8, 12}, {50, 60}, $BcMixingDefaultParameters, "total"]
 ```
 
-A quick total scan currently gives values near \(-8^\circ\) across
+A quick total scan currently gives values near \(43^\circ\)-\(45^\circ\) across
 the example window:
 
 ```wl
@@ -149,9 +154,9 @@ MixingAngleMatrix[{8, 12, 2}, {50, 60, 5}, "total"]
 returns approximately
 
 ```wl
-{{-8.64, -8.38, -8.18},
- {-8.57, -8.26, -8.02},
- {-8.51, -8.18, -7.91}}
+{{42.85, 43.47, 43.96},
+ {43.01, 43.75, 44.37},
+ {43.13, 43.95, 44.67}}
 ```
 
 for \(M^2=\{8,10,12\}\) and \(s_0=\{50,55,60\}\).
@@ -190,6 +195,46 @@ AA: G2/pert = -0.00254
 AB: G2/pert = -0.00220
 BB: G2/pert = -0.00140
 ```
+
+## Mass-Dimension Checks
+
+The tensor current must be normalized as
+
+\[
+J^B_\mu=
+i\bar b\sigma_{\mu\alpha}
+\frac{p^\alpha}{m_b+m_c}\gamma_5c .
+\]
+
+Without the factor \(1/(m_b+m_c)\), \(J^A_\mu\) has mass dimension 3 while
+\(J^B_\mu\) has mass dimension 4. Then the three projected spectral densities
+would have dimensions
+
+\[
+[\rho^{AA}],\ [\rho^{AB}],\ [\rho^{BB}]
+=2,\ 3,\ 4,
+\]
+
+and the mixing-angle formula would combine dimensionally incompatible
+quantities.
+
+The script now has checks for this:
+
+```wl
+MixingMassDimensionReport[]
+CheckMixingMassDimensions[]
+PerturbativeSpectralDensityDimensionReport[]
+```
+
+The normalized convention returns `True` for `CheckMixingMassDimensions[]`.
+For comparison,
+
+```wl
+MixingMassDimensionReport[False]
+CheckMixingMassDimensions[False]
+```
+
+shows the deliberately unnormalized case and returns `False`.
 
 ## Gluon Condensate Status
 

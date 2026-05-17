@@ -33,7 +33,10 @@ The quark content convention is
 The two interpolating currents are taken as
 \begin{align}
   J^A_\mu &= \bar b\,\gamma_\mu\gamma_5\,c,\\
-  J^B_\mu &= i\,\bar b\,\sigma_{\mu\alpha}p^\alpha\gamma_5\,c,
+  J^B_\mu &=
+  i\,\bar b\,\sigma_{\mu\alpha}
+  \frac{p^\alpha}{m_b+m_c}
+  \gamma_5\,c,
 \end{align}
 where
 \begin{equation}
@@ -43,9 +46,56 @@ The explicit factor of $i$ in $J^B_\mu$ is retained.  This is important
 because FeynCalc's \texttt{DiracSigma} already contains the conventional
 $i/2$ commutator.
 
+The factor $1/(m_b+m_c)$ is also essential.  Since
+$[\bar Q Q]=3$ and $[p^\alpha]=1$, the unnormalized tensor current
+$i\bar b\sigma_{\mu\alpha}p^\alpha\gamma_5c$ has mass dimension 4, while
+$J^A_\mu$ has mass dimension 3.  The normalized current above makes both
+currents dimension 3.
+
 If the opposite flavor convention is used, for example $B_c^- = \bar c b$,
 the sign of the quoted angle can change.  The absolute convention must
 therefore be kept fixed when comparing to other papers.
+
+\section{Mass-dimension check}
+
+The quark field has dimension $3/2$, while $p^\alpha$, $m_b$, and $m_c$ have
+dimension 1.  Therefore
+\begin{equation}
+  [J^A_\mu]=3,
+  \qquad
+  [J^B_\mu]=3
+\end{equation}
+only after the tensor current is normalized by $m_b+m_c$.
+
+For currents with dimensions $d_i$ and $d_j$,
+\begin{equation}
+  [\Pi^{ij}_{\mu\nu}]
+  =
+  d_i+d_j-4,
+\end{equation}
+because of the $d^4x$ integration in the two-point function.  Thus the
+normalized basis gives
+\begin{equation}
+  [\Pi^{AA}_1]=[\Pi^{AB}_1]=[\Pi^{BB}_1]=2.
+\end{equation}
+The spectral densities have the same mass dimension as the invariant
+correlator,
+\begin{equation}
+  [\rho^{AA}]=[\rho^{AB}]=[\rho^{BB}]=2.
+\end{equation}
+In the present code the Borel moment is evaluated as
+$\int ds\,e^{-s/M^2}\rho(s)$, so all three numerical moments carry one common
+extra factor of $[ds]=2$.  This common convention does not affect the mixing
+angle.
+
+If the tensor current were left unnormalized, the dimensions would instead be
+\begin{equation}
+  [\rho^{AA}],\ [\rho^{AB}],\ [\rho^{BB}]
+  =
+  2,\ 3,\ 4,
+\end{equation}
+and the matrix entries in the angle formula would not be dimensionally
+compatible.
 
 \section{Implementation map}
 
@@ -218,16 +268,22 @@ The three projected OPE contributions are generated from
   \left[
     \gamma_\mu\gamma_5
     S_c(k)
-    i\sigma_{\nu\alpha}p^\alpha\gamma_5
+    i\sigma_{\nu\alpha}
+    \frac{p^\alpha}{m_b+m_c}
+    \gamma_5
     S_b(k-p)
   \right],\\
   \Pi^{BB}_1 &\sim
   P^{\mu\nu}_{(1)}
   \operatorname{Tr}
   \left[
-    i\sigma_{\mu\alpha}p^\alpha\gamma_5
+    i\sigma_{\mu\alpha}
+    \frac{p^\alpha}{m_b+m_c}
+    \gamma_5
     S_c(k)
-    i\sigma_{\nu\beta}p^\beta\gamma_5
+    i\sigma_{\nu\beta}
+    \frac{p^\beta}{m_b+m_c}
+    \gamma_5
     S_b(k-p)
   \right].
 \end{align}
@@ -257,9 +313,11 @@ The perturbative spectral densities are implemented as
   =
   \frac{N_c}{16\pi^2}
   \frac{\sqrt{\lambda(s,m_b,m_c)}}{s}
-  N^{ij}(s),
+  \frac{N^{ij}(s)}{(m_b+m_c)^{n_B^{ij}}},
 \end{equation}
-with
+where $n_B^{AA}=0$, $n_B^{AB}=n_B^{BA}=1$, and $n_B^{BB}=2$ counts how many
+tensor currents occur in the channel.  The unnormalized numerator functions
+are
 \begin{align}
   N^{AA}(s)
   &=
@@ -289,13 +347,13 @@ Equivalently, after setting $N_c=3$,
   \sqrt{\lambda(s,m_b,m_c)},\\
   \rho_{\rm pert}^{AB}(s)
   &=
-  \frac{9}{8\pi^2s}
+  \frac{9}{8\pi^2s(m_b+m_c)}
   (m_b-m_c)
   \left[(m_b+m_c)^2-s\right]
   \sqrt{\lambda(s,m_b,m_c)},\\
   \rho_{\rm pert}^{BB}(s)
   &=
-  \frac{3}{8\pi^2s}
+  \frac{3}{8\pi^2s(m_b+m_c)^2}
   \left[
     -2(m_b^2-m_c^2)^2
     +(m_b^2-6m_bm_c+m_c^2)s
@@ -313,6 +371,10 @@ The perturbative Borel moments are
   e^{-s/M^2}
   \rho_{\rm pert}^{ij}(s).
 \end{equation}
+
+With this convention all three perturbative spectral densities have mass
+dimension 2.  Without the factors of $(m_b+m_c)^{-n_B^{ij}}$, their
+dimensions would be 2, 3, and 4 for $AA$, $AB$, and $BB$, respectively.
 
 \section{Dimension-4 gluon condensate}
 
@@ -447,26 +509,26 @@ For this point,
 The perturbative moments are
 \begin{align}
   \Pi_{\rm pert}^{AA} &= 0.1441716826,\\
-  \Pi_{\rm pert}^{AB} &= -0.5731095699,\\
-  \Pi_{\rm pert}^{BB} &= 4.0042965387.
+  \Pi_{\rm pert}^{AB} &= -0.1051577192,\\
+  \Pi_{\rm pert}^{BB} &= 0.1348134513.
 \end{align}
 The gluon-condensate moments are
 \begin{align}
   \Pi_{G^2}^{AA} &= -0.0003658277,\\
-  \Pi_{G^2}^{AB} &= 0.0012586339,\\
-  \Pi_{G^2}^{BB} &= -0.0056104146.
+  \Pi_{G^2}^{AB} &= 0.0002309420,\\
+  \Pi_{G^2}^{BB} &= -0.0001888869.
 \end{align}
 Thus
 \begin{align}
   \Pi_{\rm total}^{AA} &= 0.1438058549,\\
-  \Pi_{\rm total}^{AB} &= -0.5718509360,\\
-  \Pi_{\rm total}^{BB} &= 3.9986861241.
+  \Pi_{\rm total}^{AB} &= -0.1049267772,\\
+  \Pi_{\rm total}^{BB} &= 0.1346245644.
 \end{align}
 
 The corresponding angles are
 \begin{align}
-  \theta_{\rm pert} &= -8.269086981^\circ,\\
-  \theta_{\rm pert+G^2} &= -8.262530639^\circ.
+  \theta_{\rm pert} &= 43.726118943^\circ,\\
+  \theta_{\rm pert+G^2} &= 43.747426660^\circ.
 \end{align}
 At this point the relative condensate corrections are
 \begin{align}
@@ -487,6 +549,9 @@ Then evaluate
 NumericOPESummary[10, 55]
 NumericMixingAngleDegrees[10, 55, "pert"]
 NumericMixingAngleDegrees[10, 55, "total"]
+MixingMassDimensionReport[]
+CheckMixingMassDimensions[]
+PerturbativeSpectralDensityDimensionReport[]
 \end{verbatim}
 For window studies one can scan
 \begin{verbatim}
@@ -499,7 +564,8 @@ OPEConvergenceDataset[{8, 12, 1}, {50, 60, 5}]
 A theorist can check the calculation in the following order:
 \begin{enumerate}
   \item Confirm the current convention, especially the explicit factor of
-  $i$ in $J^B_\mu$ and the definition of $\sigma_{\mu\nu}$.
+  $i$ in $J^B_\mu$, the normalization $p^\alpha/(m_b+m_c)$, and the
+  definition of $\sigma_{\mu\nu}$.
   \item Reproduce the three projected perturbative traces and verify the
   numerator functions $N^{AA}(s)$, $N^{AB}(s)$, and $N^{BB}(s)$.
   \item Check the two-body phase-space normalization

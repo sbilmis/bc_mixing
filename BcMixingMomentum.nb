@@ -16,6 +16,24 @@ Notebook[{
     RowBox[{"CheckEnvironment", "[", "]"}]
   ], "Input"],
 
+  Cell["Mass-Dimension Checks", "Section"],
+  Cell["The tensor current is normalized with p/(mb+mc), so AA, AB, BA, and BB have compatible spectral-density dimensions. The False case shows the deliberately unnormalized convention.", "Text"],
+  Cell[BoxData[
+    RowBox[{"MixingMassDimensionReport", "[", "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"CheckMixingMassDimensions", "[", "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"PerturbativeSpectralDensityDimensionReport", "[", "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"MixingMassDimensionReport", "[", "False", "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"CheckMixingMassDimensions", "[", "False", "]"}]
+  ], "Input"],
+
   Cell["Projected Loop Integrands", "Section"],
   Cell["These cells build the spin-1 projected OPE-side integrands before the final spectral-density step.", "Text"],
   Cell[BoxData[

@@ -9,7 +9,7 @@
 
     Currents:
       J_A[mu] = \bar b gamma_mu gamma_5 c
-      J_B[mu] = i \bar b sigma_{mu alpha} p^alpha gamma_5 c
+      J_B[mu] = i \bar b sigma_{mu alpha} p^alpha/(m_b + m_c) gamma_5 c
 
     Implemented OPE algebra:
       - perturbative heavy-heavy loop
@@ -31,10 +31,11 @@
 
     Notes:
       1. The tensor current contains the explicit current factor
-         i sigma_{mu alpha} p^alpha gamma_5.  Since FeynCalc's DiracSigma
-         already contains the conventional i/2 commutator, retaining the
-         current's extra factor of i makes the projected AB and BB invariant
-         amplitudes real.
+         i sigma_{mu alpha} p^alpha/(m_b + m_c) gamma_5.  The denominator
+         gives J_A and J_B the same mass dimension. Since FeynCalc's
+         DiracSigma already contains the conventional i/2 commutator,
+         retaining the current's extra factor of i makes the projected AB
+         and BB invariant amplitudes real.
       2. BorelPi is intentionally written in terms of spectral densities
          rho[channel, order][s].  Use SetSpectralDensity after deriving or
          importing the spectral densities from the projected Feynman-parameter
@@ -113,10 +114,14 @@ ParameterRules[assoc_: $BcMixingDefaultParameters] := {
 
 BcThreshold[] := (mb + mc)^2;
 
+TensorCurrentScale[] := mb + mc;
+TensorCurrentNormalization[] := 1/TensorCurrentScale[];
+
 CheckEnvironment[] := <|
   "FeynCalcLoaded" -> TrueQ[ValueQ[$FeynCalcVersion]],
   "FeynCalcVersion" -> If[TrueQ[ValueQ[$FeynCalcVersion]], $FeynCalcVersion, Missing["NotLoaded"]],
   "TensorCurrentKeepsRawI" -> $BcMixingKeepRawTensorI,
+  "TensorCurrentScale" -> TensorCurrentScale[],
   "Nc" -> $BcMixingNc,
   "Threshold" -> BcThreshold[],
   "DefaultParameters" -> $BcMixingDefaultParameters
@@ -140,11 +145,47 @@ ValidateOrder[order_String] := If[
   Abort[]
 ];
 
+CurrentTensorPower[channel_String] :=
+  Count[$BcMixingChannels[ValidateChannel[channel]], "B"];
+
+CurrentNormalizationFactor[channel_String] :=
+  TensorCurrentScale[]^-CurrentTensorPower[channel];
+
+CurrentMassDimension["A", normalized_: True] := 3;
+CurrentMassDimension["B", normalized_: True] := If[TrueQ[normalized], 3, 4];
+
+ChannelCurrentMassDimensions[channel_String, normalized_: True] :=
+  CurrentMassDimension[#, normalized] & /@ $BcMixingChannels[ValidateChannel[channel]];
+
+CorrelatorMassDimension[channel_String, normalized_: True] :=
+  Total[ChannelCurrentMassDimensions[channel, normalized]] - 4;
+
+SpectralDensityMassDimension[channel_String, normalized_: True] :=
+  CorrelatorMassDimension[channel, normalized];
+
+BorelMomentMassDimension[channel_String, normalized_: True] :=
+  SpectralDensityMassDimension[channel, normalized] + 2;
+
+MixingMassDimensionReport[normalized_: True] := AssociationMap[
+  <|
+    "CurrentDimensions" -> ChannelCurrentMassDimensions[#, normalized],
+    "CorrelatorDimension" -> CorrelatorMassDimension[#, normalized],
+    "SpectralDensityDimension" -> SpectralDensityMassDimension[#, normalized],
+    "BorelMomentDimensionInThisConvention" -> BorelMomentMassDimension[#, normalized]
+  |>&,
+  {"AA", "AB", "BA", "BB"}
+];
+
+CheckMixingMassDimensions[normalized_: True] := Module[
+  {dims = Values[AssociationMap[SpectralDensityMassDimension[#, normalized] &, {"AA", "AB", "BA", "BB"}]]},
+  SameQ @@ dims
+];
+
 CurrentVertex["A", lor_] := GA[lor] . GA[5];
 
 CurrentVertex["B", lor_] := Module[
   {phase = If[TrueQ[$BcMixingKeepRawTensorI], I, 1]},
-  phase DiracSigma[GA[lor], GS[p]] . GA[5]
+  phase TensorCurrentNormalization[] (DiracSigma[GA[lor], GS[p]] . GA[5])
 ];
 
 S0Num[q_, m_] := GS[q] + m;
@@ -356,6 +397,108 @@ KallenLambda[ss_, m1_, m2_] :=
 
 OnShellKDotP[ss_] := (ss + mc^2 - mb^2)/2;
 
+$BcMixingMassDimensions = <|
+  mb -> 1,
+  mc -> 1,
+  M2 -> 2,
+  s0 -> 2,
+  s -> 2,
+  G2 -> 4,
+  k -> 1,
+  p -> 1
+|>;
+
+MassDimensionFailureQ[dim_] := MatchQ[dim, _Failure];
+
+MassDimension[expr_, dimRules_: Automatic] := Module[
+  {rules = Replace[dimRules, Automatic -> $BcMixingMassDimensions]},
+  MassDimensionInternal[expr, rules]
+];
+
+MassDimensionInternal[expr_, rules_Association] /; NumericQ[expr] := 0;
+
+MassDimensionInternal[expr_Symbol, rules_Association] := Lookup[rules, expr, 0];
+
+MassDimensionInternal[expr_Plus, rules_Association] := Module[
+  {termDims = MassDimensionInternal[#, rules] & /@ List @@ expr, first},
+  If[AnyTrue[termDims, MassDimensionFailureQ],
+    Return[Failure["MassDimensionSubexpressionFailed", <|"Expression" -> HoldForm[expr], "TermDimensions" -> termDims|>]]
+  ];
+  first = First[termDims];
+  If[AllTrue[Rest[termDims], TrueQ[Simplify[# == first]] &],
+    first,
+    Failure["InhomogeneousMassDimension", <|"Expression" -> HoldForm[expr], "TermDimensions" -> termDims|>]
+  ]
+];
+
+MassDimensionInternal[expr_Times, rules_Association] := Module[
+  {factorDims = MassDimensionInternal[#, rules] & /@ List @@ expr},
+  If[AnyTrue[factorDims, MassDimensionFailureQ],
+    Failure["MassDimensionSubexpressionFailed", <|"Expression" -> HoldForm[expr], "FactorDimensions" -> factorDims|>],
+    Simplify[Total[factorDims]]
+  ]
+];
+
+MassDimensionInternal[Power[base_, exponent_?NumericQ], rules_Association] := Module[
+  {baseDim = MassDimensionInternal[base, rules]},
+  If[MassDimensionFailureQ[baseDim],
+    baseDim,
+    Simplify[exponent baseDim]
+  ]
+];
+
+MassDimensionInternal[Exp[arg_], rules_Association] := Module[
+  {argDim = MassDimensionInternal[arg, rules]},
+  Which[
+    MassDimensionFailureQ[argDim], argDim,
+    TrueQ[Simplify[argDim == 0]], 0,
+    True, Failure["DimensionfulExponentialArgument", <|"Expression" -> HoldForm[Exp[arg]], "ArgumentDimension" -> argDim|>]
+  ]
+];
+
+MassDimensionInternal[Log[arg_], rules_Association] := Module[
+  {argDim = MassDimensionInternal[arg, rules]},
+  Which[
+    MassDimensionFailureQ[argDim], argDim,
+    TrueQ[Simplify[argDim == 0]], 0,
+    True, Failure["DimensionfulLogArgument", <|"Expression" -> HoldForm[Log[arg]], "ArgumentDimension" -> argDim|>]
+  ]
+];
+
+MassDimensionInternal[Abs[arg_], rules_Association] := MassDimensionInternal[arg, rules];
+
+MassDimensionInternal[HeavisideTheta[_], rules_Association] := 0;
+
+MassDimensionInternal[DiracDelta[arg_], rules_Association] := Module[
+  {argDim = MassDimensionInternal[arg, rules]},
+  If[MassDimensionFailureQ[argDim], argDim, -argDim]
+];
+
+MassDimensionInternal[expr_, rules_Association] := Module[
+  {known = Keys[rules]},
+  If[FreeQ[expr, Alternatives @@ known],
+    0,
+    Failure["UnknownMassDimension", <|"Expression" -> HoldForm[expr]|>]
+  ]
+];
+
+MassDimensionCheck[name_, expr_, expected_: Automatic, dimRules_: Automatic] := Module[
+  {dim = MassDimension[expr, dimRules], pass},
+  pass = ! MassDimensionFailureQ[dim] &&
+    (expected === Automatic || TrueQ[Simplify[dim == expected]]);
+  <|
+    "Name" -> name,
+    "Dimension" -> dim,
+    "Expected" -> expected,
+    "Pass" -> pass
+  |>
+];
+
+PerturbativeSpectralDensityDimensionReport[] := AssociationMap[
+  MassDimensionCheck["rhoPert" <> #, PerturbativeSpectralDensity[#, s], 2] &,
+  {"AA", "AB", "BA", "BB"}
+];
+
 PerturbativeNumerator[channel_String, ss_: s] := Module[
   {kp = OnShellKDotP[ss], k2 = mc^2, ch = ValidateChannel[channel]},
   Switch[
@@ -374,6 +517,7 @@ PerturbativeNumerator[channel_String, ss_: s] := Module[
 PerturbativeSpectralDensity[channel_String, ss_: s] := Module[
   {lam = KallenLambda[ss, mb, mc]},
   $BcMixingNc/(16 Pi^2) Sqrt[lam]/ss PerturbativeNumerator[channel, ss]
+    CurrentNormalizationFactor[channel]
 ];
 
 InstallPerturbativeSpectralDensities[] := (
