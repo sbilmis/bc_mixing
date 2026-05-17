@@ -109,15 +109,18 @@ The main code objects are:
   $\Pi^{ij}_{\rm order}(M^2,s_0)$.
   \item \texttt{NumericMixingAngleDegrees[M2, s0, ``total'']}:
   $\theta(M^2,s_0)$ from
-  $\Pi_{\rm pert}^{ij}+\Pi_{G^2}^{ij}$.
+  $\Pi_{\rm pert}^{ij}+\Pi_{G^2}^{ij}+\Pi_{G^3}^{ij}$.
 \end{itemize}
 
 The implemented OPE orders are
 \begin{equation}
-  \text{pert},\qquad G^2,\qquad \text{total}=\text{pert}+G^2.
+  \text{pert},\qquad G^2,\qquad \text{pertG2}=\text{pert}+G^2,
+  \qquad G^3,\qquad \text{total}=\text{pert}+G^2+G^3.
 \end{equation}
-The dimension-6 triple-gluon condensate $\langle g_s^3G^3\rangle$ is not
-included in the present file.
+The implemented dimension-6 triple-gluon condensate
+$\langle g_s^3G^3\rangle$ is the standard vacuum-averaged single-line
+propagator term. Possible cross-line open-field $G^3$ terms need a separate
+derivation.
 
 \section{Correlators and spin-1 projection}
 
@@ -376,7 +379,7 @@ With this convention all three perturbative spectral densities have mass
 dimension 2.  Without the factors of $(m_b+m_c)^{-n_B^{ij}}$, their
 dimensions would be 2, 3, and 4 for $AA$, $AB$, and $BB$, respectively.
 
-\section{Dimension-4 gluon condensate}
+\section{Dimension-4 and dimension-6 gluon condensates}
 
 The implemented condensate contribution is
 \begin{equation}
@@ -412,8 +415,36 @@ This gives
   m_c^2x+m_b^2(1-x)-s\,x(1-x).
 \end{equation}
 
-The $G^2$ terms are not treated as ordinary smooth spectral densities.  We
-instead use a direct Borel transform.  Set $s=-Q^2$ and write
+For the triple-gluon condensate we use the standard momentum-space
+vacuum-averaged heavy-quark propagator term
+\begin{equation}
+  S_Q^{(G^3)}(k)
+  =
+  \frac{\langle g_s^3G^3\rangle}{48}
+  \frac{
+  (\slashed{k}+m_Q)
+  \left[
+    \slashed{k}(k^2-3m_Q^2)
+    +2m_Q(2k^2-m_Q^2)
+  \right]
+  (\slashed{k}+m_Q)}
+  {(k^2-m_Q^2)^6}.
+\end{equation}
+The implemented dimension-6 contribution is
+\begin{equation}
+  \Pi_{G^3}^{ij}
+  =
+  \Pi^{ij}[S_c^{(G^3)}S_b^{(0)}]
+  +
+  \Pi^{ij}[S_c^{(0)}S_b^{(G^3)}].
+\end{equation}
+This is the standard single-heavy-propagator contribution.  It does not yet
+include any possible cross-line open-field terms of the schematic type
+$S^{(G^2_{\rm open})}S^{(G)}$, which require an explicitly open two-gluon
+propagator and a separate color/Lorentz derivation.
+
+The $G^2$ and $G^3$ terms are not treated as ordinary smooth spectral
+densities.  We instead use a direct Borel transform.  Set $s=-Q^2$ and write
 \begin{equation}
   \Delta(x,-Q^2)
   =
@@ -429,11 +460,11 @@ where
 
 The Feynman-parameter amplitude is decomposed as
 \begin{equation}
-  -i\,\mathcal{A}_{G^2}^{ij}(x,-Q^2)
+  -i\,\mathcal{A}_{G^r}^{ij}(x,-Q^2)
   =
-  \sum_{n\geq 1}
-  \frac{a_n^{ij}(x)}
-  {\left[Q^2+\bar s(x)\right]^n}
+  \sum_{\ell\geq 1}
+  \frac{a_\ell^{ij}(x)}
+  {\left[Q^2+\bar s(x)\right]^\ell}
   +
   \text{polynomial subtraction terms}.
 \end{equation}
@@ -455,14 +486,14 @@ We use
 \end{equation}
 Thus
 \begin{equation}
-  \Pi_{G^2}^{ij}(M^2,s_0)
+  \Pi_{G^r}^{ij}(M^2,s_0)
   =
   \int_{x_-}^{x_+}
   dx\,
   e^{-\bar s(x)/M^2}
-  \sum_{n\geq1}
-  \frac{a_n^{ij}(x)}
-  {(n-1)!\,(M^2)^{n-1}}.
+  \sum_{\ell\geq1}
+  \frac{a_\ell^{ij}(x)}
+  {(\ell-1)!\,(M^2)^{\ell-1}}.
 \end{equation}
 
 The continuum restriction is
@@ -489,7 +520,9 @@ The total moments used in the current numerical result are
   =
   \Pi_{\rm pert}^{ij}(M^2,s_0)
   +
-  \Pi_{G^2}^{ij}(M^2,s_0).
+  \Pi_{G^2}^{ij}(M^2,s_0)
+  +
+  \Pi_{G^3}^{ij}(M^2,s_0).
 \end{equation}
 
 The current default numerical inputs are
@@ -497,6 +530,7 @@ The current default numerical inputs are
   m_b &= 4.18~\text{GeV},\\
   m_c &= 1.27~\text{GeV},\\
   \langle g_s^2G^2\rangle &= 4\pi^2(0.012)~\text{GeV}^4,\\
+  \langle g_s^3G^3\rangle &= 0.57~\text{GeV}^6,\\
   M^2 &= 10~\text{GeV}^2,\\
   s_0 &= 55~\text{GeV}^2.
 \end{align}
@@ -518,23 +552,33 @@ The gluon-condensate moments are
   \Pi_{G^2}^{AB} &= 0.0002309420,\\
   \Pi_{G^2}^{BB} &= -0.0001888869.
 \end{align}
+The triple-gluon-condensate moments are
+\begin{align}
+  \Pi_{G^3}^{AA} &= 0.0000700979,\\
+  \Pi_{G^3}^{AB} &= -0.0000493659,\\
+  \Pi_{G^3}^{BB} &= 0.0000310238.
+\end{align}
 Thus
 \begin{align}
-  \Pi_{\rm total}^{AA} &= 0.1438058549,\\
-  \Pi_{\rm total}^{AB} &= -0.1049267772,\\
-  \Pi_{\rm total}^{BB} &= 0.1346245644.
+  \Pi_{\rm total}^{AA} &= 0.1438759528,\\
+  \Pi_{\rm total}^{AB} &= -0.1049761432,\\
+  \Pi_{\rm total}^{BB} &= 0.1346555882.
 \end{align}
 
 The corresponding angles are
 \begin{align}
   \theta_{\rm pert} &= 43.726118943^\circ,\\
-  \theta_{\rm pert+G^2} &= 43.747426660^\circ.
+  \theta_{\rm pert+G^2} &= 43.747426660^\circ,\\
+  \theta_{\rm pert+G^2+G^3} &= 43.742693524^\circ.
 \end{align}
 At this point the relative condensate corrections are
 \begin{align}
   \frac{\Pi_{G^2}^{AA}}{\Pi_{\rm pert}^{AA}} &= -0.002537,\\
   \frac{\Pi_{G^2}^{AB}}{\Pi_{\rm pert}^{AB}} &= -0.002196,\\
-  \frac{\Pi_{G^2}^{BB}}{\Pi_{\rm pert}^{BB}} &= -0.001401.
+  \frac{\Pi_{G^2}^{BB}}{\Pi_{\rm pert}^{BB}} &= -0.001401,\\
+  \frac{\Pi_{G^3}^{AA}}{\Pi_{\rm pert}^{AA}} &= 0.000486,\\
+  \frac{\Pi_{G^3}^{AB}}{\Pi_{\rm pert}^{AB}} &= 0.000469,\\
+  \frac{\Pi_{G^3}^{BB}}{\Pi_{\rm pert}^{BB}} &= 0.000230.
 \end{align}
 
 \section{How to reproduce the numerical check}
@@ -548,6 +592,7 @@ Then evaluate
 \begin{verbatim}
 NumericOPESummary[10, 55]
 NumericMixingAngleDegrees[10, 55, "pert"]
+NumericMixingAngleDegrees[10, 55, "pertG2"]
 NumericMixingAngleDegrees[10, 55, "total"]
 MixingMassDimensionReport[]
 CheckMixingMassDimensions[]
@@ -572,10 +617,12 @@ A theorist can check the calculation in the following order:
   $N_c\sqrt{\lambda}/(16\pi^2s)$ used in $\rho_{\rm pert}^{ij}(s)$.
   \item Verify the background-field propagator terms and the color factor in
   the $S^{(G)}S^{(G)}$ contribution.
-  \item Independently derive the direct Borel formula for the $G^2$ terms,
-  including the $-i$ phase convention.
-  \item Check that $\Pi_{G^2}/\Pi_{\rm pert}$ remains small in the accepted
-  Borel window.
+  \item Independently derive the direct Borel formula for the $G^2$ and $G^3$
+  terms, including the $-i$ phase convention.
+  \item Check whether the standard single-line $G^3$ propagator contribution
+  is sufficient, or whether cross-line open-field $G^3$ terms must be added.
+  \item Check that $\Pi_{G^2}/\Pi_{\rm pert}$ and
+  $\Pi_{G^3}/\Pi_{\rm pert}$ remain small in the accepted Borel window.
   \item Determine the final working window using OPE convergence, Borel
   stability, and pole-dominance criteria.
 \end{enumerate}

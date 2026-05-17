@@ -31,13 +31,18 @@ The calculation currently supports:
 - Numerical Borel moments and perturbative mixing angle.
 - Direct Borel moments for the dimension-4 gluon condensate
   \(\langle g_s^2G^2\rangle\).
+- Direct Borel moments for the standard vacuum-averaged single-line
+  dimension-6 triple-gluon condensate \(\langle g_s^3G^3\rangle\).
 - Scan/table/plot helpers for trial \(M^2\) and \(s_0\) windows.
-- OPE-convergence scan helpers comparing \(G^2\) to the perturbative moment.
+- OPE-convergence scan helpers comparing \(G^2\) and \(G^3\) to the
+  perturbative moment.
 - Mass-dimension checks for the current basis and perturbative spectral
   densities.
 
-The dimension-6 triple-gluon condensate \(\langle g_s^3G^3\rangle\) is not
-implemented in this version.
+The implemented \(G^3\) term is the standard
+\(S_c^{G^3}S_b^0+S_c^0S_b^{G^3}\) contribution. Possible cross-line open-field
+terms involving an explicitly open two-gluon propagator still need an
+independent derivation before they can be added.
 
 ## Running The Code
 
@@ -94,11 +99,11 @@ For this normalized-current convention the raw and principal-branch values
 are the same at the displayed point. The function `NumericMixingAngleDegrees`
 reports the conventional principal branch in \([-45^\circ,45^\circ]\).
 
-The perturbative value is useful for debugging conventions. The first
-`"total"` value, including \(\langle g_s^2G^2\rangle\), is now available:
+The perturbative value is useful for debugging conventions. The
+perturbative-plus-\(G^2\) result is available as:
 
 ```wl
-NumericMixingAngleDegrees[10, 55, "total"]
+NumericMixingAngleDegrees[10, 55, "pertG2"]
 ```
 
 Current result:
@@ -107,9 +112,21 @@ Current result:
 43.74742666040357
 ```
 
-At this point the condensate correction is small, so the total angle is close
-to the perturbative one. This should still be tested across the accepted
-Borel window before quoting a paper-level result.
+The current `"total"` result includes perturbative, \(G^2\), and \(G^3\):
+
+```wl
+NumericMixingAngleDegrees[10, 55, "total"]
+```
+
+Current result:
+
+```wl
+43.74269352435188
+```
+
+At this point the condensate corrections are small, so the total angle is
+close to the perturbative one. This should still be tested across the
+accepted Borel window before quoting a paper-level result.
 
 ## Borel-Window And Threshold Scans
 
@@ -154,8 +171,8 @@ MixingAngleMatrix[{8, 12, 2}, {50, 60, 5}, "total"]
 returns approximately
 
 ```wl
-{{42.85, 43.47, 43.96},
- {43.01, 43.75, 44.37},
+{{42.83, 43.45, 43.94},
+ {43.00, 43.74, 44.37},
  {43.13, 43.95, 44.67}}
 ```
 
@@ -194,6 +211,9 @@ At \(M^2=10\), \(s_0=55\), the current ratios are approximately:
 AA: G2/pert = -0.00254
 AB: G2/pert = -0.00220
 BB: G2/pert = -0.00140
+AA: G3/pert =  0.000486
+AB: G3/pert =  0.000469
+BB: G3/pert =  0.000230
 ```
 
 ## Mass-Dimension Checks
@@ -238,7 +258,7 @@ shows the deliberately unnormalized case and returns `False`.
 
 ## Gluon Condensate Status
 
-The script already builds the dimension-4 gluon-condensate algebra from
+The script builds the dimension-4 gluon-condensate algebra from
 
 \[
 S_c^{G^2}S_b^0,\qquad
@@ -246,11 +266,20 @@ S_c^0S_b^{G^2},\qquad
 S_c^GS_b^G .
 \]
 
+It also builds the standard single-line dimension-6 triple-gluon term
+
+\[
+S_c^{G^3}S_b^0,\qquad
+S_c^0S_b^{G^3}.
+\]
+
 These can be inspected with:
 
 ```wl
 Correlator["AA", "G2"]
+Correlator["AA", "G3"]
 FeynmanParameterForm["AA", "G2"]
+FeynmanParameterForm["AA", "G3"]
 ```
 
 The \(\langle g_s^2G^2\rangle\) contribution is not treated as a smooth
@@ -276,25 +305,34 @@ with
 {x(1-x)} .
 \]
 
-The physical numerical angle is computed from
+The physical numerical angle in the current `"total"` convention is computed
+from
 
 \[
-\Pi^{ij}=\Pi^{ij}_{\rm pert}+\Pi^{ij}_{G^2}.
+\Pi^{ij}=\Pi^{ij}_{\rm pert}+\Pi^{ij}_{G^2}+\Pi^{ij}_{G^3}.
 \]
 
-The code now allows
+The code allows
 
 ```wl
+NumericMixingAngleDegrees[M2, s0, "pertG2"]
 NumericMixingAngleDegrees[M2, s0, "total"]
 ```
 
-where `"total"` means perturbative plus \(\langle g_s^2G^2\rangle\).
+where `"pertG2"` means perturbative plus \(\langle g_s^2G^2\rangle\), and
+`"total"` means perturbative plus \(\langle g_s^2G^2\rangle\) plus
+\(\langle g_s^3G^3\rangle\).
 
-Implementation caveat: the direct \(G^2\) Borel transform uses the phase
-convention `-I` to remove the loop-integration prefactor from the
-Feynman-parameter amplitudes. This is consistent with the current
-perturbative convention and gives a small OPE correction, but it should be
-cross-checked against an independent derivation before finalizing the paper.
+Implementation caveats:
+
+- The direct \(G^2\) and \(G^3\) Borel transforms use the phase convention
+  `-I` to remove the loop-integration prefactor from the Feynman-parameter
+  amplitudes. This is consistent with the current perturbative convention and
+  gives small OPE corrections, but it should be cross-checked against an
+  independent derivation before finalizing the paper.
+- The \(G^3\) implementation currently uses the standard vacuum-averaged
+  single-heavy-propagator term. Cross-line open-field \(G^3\) terms are not
+  guessed here.
 
 ## Paper Notes
 
@@ -303,8 +341,11 @@ a rough stability pattern, but it should not be quoted as the final result.
 For a paper-level prediction we still need:
 
 - Independent validation of the \(\langle g_s^2G^2\rangle\) Borel formula.
+- Independent validation of the \(\langle g_s^3G^3\rangle\) Borel formula and
+  the single-line \(G^3\) approximation/completeness.
 - OPE convergence checks across the final window, especially
-  \(|\Pi_{G^2}| < |\Pi_{\rm pert}|\).
+  \(|\Pi_{G^2}|,|\Pi_{G^3}| < |\Pi_{\rm pert}|\).
 - Pole-dominance and continuum-threshold criteria.
 - A chosen \(M^2\) and \(s_0\) working region.
-- Uncertainty propagation over \(m_b\), \(m_c\), \(G^2\), \(M^2\), and \(s_0\).
+- Uncertainty propagation over \(m_b\), \(m_c\), \(G^2\), \(G^3\), \(M^2\),
+  and \(s_0\).

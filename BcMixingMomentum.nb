@@ -64,6 +64,13 @@ Notebook[{
       "Short"
     }]
   ], "Input"],
+  Cell[BoxData[
+    RowBox[{
+      RowBox[{"Correlator", "[", RowBox[{"\"AA\"", ",", "\"G3\""}], "]"}],
+      "//",
+      "Short"
+    }]
+  ], "Input"],
 
   Cell["Feynman-Parameter Representation", "Section"],
   Cell["Use these expressions to derive or check rho[channel, order][s]. The output is a list of {parameterIntegrand, prefactor, variables}, one item per scalar loop-integral term.", "Text"],
@@ -79,6 +86,9 @@ Notebook[{
   Cell[BoxData[
     RowBox[{"FeynmanParameterForm", "[", RowBox[{"\"AA\"", ",", "\"G2\""}], "]"}]
   ], "Input"],
+  Cell[BoxData[
+    RowBox[{"FeynmanParameterForm", "[", RowBox[{"\"AA\"", ",", "\"G3\""}], "]"}]
+  ], "Input"],
 
   Cell["Borel Moments And Mixing Angle", "Section"],
   Cell["BorelPi is formal until spectral densities are supplied with SetSpectralDensity[channel, order, expr, s].", "Text"],
@@ -88,9 +98,12 @@ Notebook[{
   Cell[BoxData[
     RowBox[{"MixingAngle", "[", RowBox[{"M2", ",", "s0"}], "]"}]
   ], "Input"],
-  Cell["The line above is formal unless every requested rho is installed. For numerical work, use the Numeric* functions. Perturbative rho is installed automatically and G2 is evaluated as a direct Borel moment.", "Text"],
+  Cell["The line above is formal unless every requested rho is installed. For numerical work, use the Numeric* functions. Perturbative rho is installed automatically; G2 and the standard single-line G3 term are evaluated as direct Borel moments.", "Text"],
   Cell[BoxData[
     RowBox[{"NumericMixingAngleDegrees", "[", RowBox[{"10", ",", "55", ",", "\"pert\""}], "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"NumericMixingAngleDegrees", "[", RowBox[{"10", ",", "55", ",", "\"pertG2\""}], "]"}]
   ], "Input"],
   Cell[BoxData[
     RowBox[{"NumericMixingAngleDegrees", "[", RowBox[{"10", ",", "55", ",", "\"total\""}], "]"}]
@@ -170,7 +183,7 @@ Notebook[{
   ], "Input"],
 
   Cell["Optional Manual Override", "Section"],
-  Cell["The current workflow installs perturbative rho automatically and evaluates G2 as a direct Borel moment. Use SetSpectralDensity only if you want to override a built-in perturbative spectral density for an independent cross-check.", "Text"],
+  Cell["The current workflow installs perturbative rho automatically and evaluates G2/G3 as direct Borel moments. Use SetSpectralDensity only if you want to override a built-in perturbative spectral density for an independent cross-check.", "Text"],
   Cell[BoxData[
     RowBox[{
       RowBox[{"(*",
@@ -182,6 +195,6 @@ Notebook[{
     }]
   ], "Input"],
 
-  Cell["G3 Extension Point", "Section"],
-  Cell["The triple-gluon condensate is intentionally not implemented in v1. Add it as LoopIntegrand[channel, \"G3\"] once the perturbative and G2 pieces are stable.", "Text"]
+  Cell["G3 Caveat", "Section"],
+  Cell["The implemented G3 term is the standard vacuum-averaged single-line contribution S_c^(G3) S_b^0 + S_c^0 S_b^(G3). Cross-line open-field G3 terms require a separate derivation and are not guessed in this file.", "Text"]
 }]
