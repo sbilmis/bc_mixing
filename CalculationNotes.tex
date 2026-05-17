@@ -581,6 +581,57 @@ At this point the relative condensate corrections are
   \frac{\Pi_{G^3}^{BB}}{\Pi_{\rm pert}^{BB}} &= 0.000230.
 \end{align}
 
+\section{Perturbative \texorpdfstring{$\alpha_s$}{alpha-s} sensitivity model}
+
+The full perturbative $O(\alpha_s)$ correction is not yet calculated.  As a
+diagnostic, the code implements a channel-dependent trial rescaling of the
+leading perturbative moment,
+\begin{equation}
+  \Pi_{\rm pert}^{ij}(M^2,s_0)
+  \longrightarrow
+  \left[
+    1+\frac{\alpha_s}{\pi}K_{ij}
+  \right]
+  \Pi_{\rm pert}^{ij}(M^2,s_0).
+\end{equation}
+The condensate pieces are left unchanged, so for the current total moment
+\begin{equation}
+  \Pi_{K}^{ij}
+  =
+  \left[
+    1+\frac{\alpha_s}{\pi}K_{ij}
+  \right]
+  \Pi_{\rm pert}^{ij}
+  +
+  \Pi_{G^2}^{ij}
+  +
+  \Pi_{G^3}^{ij}.
+\end{equation}
+This is only a sensitivity model; it is not a substitute for the real
+two-loop NLO perturbative spectral density.
+
+For example, with $\alpha_s=0.26$ and
+\begin{equation}
+  K_{AA}=1,\qquad K_{AB}=0,\qquad K_{BB}=-1,
+\end{equation}
+the total angle at $M^2=10~\mathrm{GeV}^2$, $s_0=55~\mathrm{GeV}^2$ changes
+from
+\begin{equation}
+  \theta_{\rm base}=43.742693524^\circ
+\end{equation}
+to
+\begin{equation}
+  \theta_K=40.625721673^\circ,
+  \qquad
+  \Delta\theta=-3.116971851^\circ.
+\end{equation}
+A coarse scan with
+$K_{AA},K_{AB},K_{BB}\in\{-2,0,2\}$ gives a maximum branch-corrected shift of
+about
+\begin{equation}
+  \max|\Delta\theta|\simeq 7.52^\circ.
+\end{equation}
+
 \section{How to reproduce the numerical check}
 
 In Mathematica, load the implementation with
@@ -594,6 +645,8 @@ NumericOPESummary[10, 55]
 NumericMixingAngleDegrees[10, 55, "pert"]
 NumericMixingAngleDegrees[10, 55, "pertG2"]
 NumericMixingAngleDegrees[10, 55, "total"]
+KFactorSensitivityRecord[10, 55, KFactorAssociation[1, 0, -1], 0.26, "total"]
+KFactorSensitivityEnvelope[10, 55, {-2, 2, 2}, 0.26, "total"]
 MixingMassDimensionReport[]
 CheckMixingMassDimensions[]
 PerturbativeSpectralDensityDimensionReport[]
@@ -623,6 +676,10 @@ A theorist can check the calculation in the following order:
   is sufficient, or whether cross-line open-field $G^3$ terms must be added.
   \item Check that $\Pi_{G^2}/\Pi_{\rm pert}$ and
   $\Pi_{G^3}/\Pi_{\rm pert}$ remain small in the accepted Borel window.
+  \item Use the $K_{ij}$ sensitivity model only as an estimate of possible
+  channel-dependent perturbative $O(\alpha_s)$ uncertainty.
+  \item Derive the true $O(\alpha_s)$ two-loop perturbative spectral
+  densities separately.
   \item Determine the final working window using OPE convergence, Borel
   stability, and pole-dominance criteria.
 \end{enumerate}

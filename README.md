@@ -38,6 +38,8 @@ The calculation currently supports:
   perturbative moment.
 - Mass-dimension checks for the current basis and perturbative spectral
   densities.
+- A perturbative \(O(\alpha_s)\) sensitivity layer using channel-dependent
+  trial \(K\)-factors. This is not a full NLO calculation.
 
 The implemented \(G^3\) term is the standard
 \(S_c^{G^3}S_b^0+S_c^0S_b^{G^3}\) contribution. Possible cross-line open-field
@@ -127,6 +129,58 @@ Current result:
 At this point the condensate corrections are small, so the total angle is
 close to the perturbative one. This should still be tested across the
 accepted Borel window before quoting a paper-level result.
+
+## Perturbative Alpha_s Sensitivity
+
+The full perturbative \(O(\alpha_s)\) correction is not implemented. As a
+first diagnostic, the script can rescale only the perturbative part by
+channel-dependent trial factors:
+
+\[
+\Pi_{\rm pert}^{ij}
+\rightarrow
+\left(1+\frac{\alpha_s}{\pi}K_{ij}\right)
+\Pi_{\rm pert}^{ij}.
+\]
+
+The condensate terms are left unchanged. This is useful for estimating how
+sensitive the angle is to unknown channel-dependent NLO corrections.
+
+Example:
+
+```wl
+KFactorSensitivityRecord[
+  10, 55,
+  KFactorAssociation[1, 0, -1],
+  0.26,
+  "total"
+]
+```
+
+Here `KFactorAssociation[1,0,-1]` means
+\(K_{AA}=1\), \(K_{AB}=0\), \(K_{BB}=-1\). At \(M^2=10\), \(s_0=55\), this
+gives
+
+```wl
+ThetaBaseDeg   = 43.74269352435188
+ThetaAlphaSDeg = 40.6257216732301
+DeltaThetaDeg  = -3.116971851121775
+```
+
+A small envelope scan can be run with:
+
+```wl
+KFactorSensitivityEnvelope[10, 55, {-2, 2, 2}, 0.26, "total"]
+```
+
+where `{-2,2,2}` scans \(K_{AA},K_{AB},K_{BB}\in\{-2,0,2\}\). For this
+coarse scan the largest branch-corrected shift is about
+
+```wl
+MaxAbsDeltaThetaDeg = 7.52
+```
+
+This should be read only as an uncertainty stress test, not as an NLO result.
 
 ## Borel-Window And Threshold Scans
 
@@ -345,6 +399,8 @@ For a paper-level prediction we still need:
   the single-line \(G^3\) approximation/completeness.
 - OPE convergence checks across the final window, especially
   \(|\Pi_{G^2}|,|\Pi_{G^3}| < |\Pi_{\rm pert}|\).
+- A dedicated perturbative \(O(\alpha_s)\) calculation, beyond the current
+  \(K_{ij}\)-factor sensitivity model.
 - Pole-dominance and continuum-threshold criteria.
 - A chosen \(M^2\) and \(s_0\) working region.
 - Uncertainty propagation over \(m_b\), \(m_c\), \(G^2\), \(G^3\), \(M^2\),

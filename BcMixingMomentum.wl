@@ -36,6 +36,12 @@
       one-gluon propagator require a separate derivation and are not guessed
       here.
 
+    Alpha_s caveat:
+      Full perturbative O(alpha_s) corrections are not implemented.  The
+      K-factor helpers provide only a sensitivity model in which the LO
+      perturbative moments are rescaled as
+        Pi_pert^ij -> (1 + alpha_s K_ij/Pi) Pi_pert^ij.
+
     Notes:
       1. The tensor current contains the explicit current factor
          i sigma_{mu alpha} p^alpha/(m_b + m_c) gamma_5.  The denominator
@@ -80,7 +86,7 @@ If[NameQ["FeynCalc`FCSetDiracGammaScheme"],
 (* ---------------------------------------------------------------------- *)
 
 ClearAll[
-  mb, mc, M2, s0, s, G2, G3, eps,
+  mb, mc, M2, s0, s, G2, G3, alphaS, eps,
   k, p, mu, nu, al, be, rh, si, x, z, xi
 ];
 
@@ -103,24 +109,32 @@ $BcMixingDefaultParameters = <|
   "mc" -> 1.27,
   "G2" -> 4 Pi^2 0.012,
   "G3" -> 0.57,
+  "alphaS" -> 0.26,
   "M2" -> 10.0,
   "s0" -> 55.0
 |>;
 
 $Assumptions =
-  Element[{mb, mc, M2, s0, s, G2, G3}, Reals] &&
-  mb > 0 && mc > 0 && M2 > 0 && s0 > (mb + mc)^2 && G2 >= 0 && G3 >= 0;
+  Element[{mb, mc, M2, s0, s, G2, G3, alphaS}, Reals] &&
+  mb > 0 && mc > 0 && M2 > 0 && s0 > (mb + mc)^2 &&
+  G2 >= 0 && G3 >= 0 && alphaS >= 0;
 
 ClearBcMixingCache[] := Null;
 
-ParameterRules[assoc_: $BcMixingDefaultParameters] := {
-  mb -> assoc["mb"],
-  mc -> assoc["mc"],
-  G2 -> assoc["G2"],
-  G3 -> assoc["G3"],
-  M2 -> assoc["M2"],
-  s0 -> assoc["s0"]
-};
+MergeDefaultParameters[assoc_: <||>] := Join[$BcMixingDefaultParameters, assoc];
+
+ParameterRules[assoc_: $BcMixingDefaultParameters] := Module[
+  {merged = MergeDefaultParameters[assoc]},
+  {
+    mb -> merged["mb"],
+    mc -> merged["mc"],
+    G2 -> merged["G2"],
+    G3 -> merged["G3"],
+    alphaS -> merged["alphaS"],
+    M2 -> merged["M2"],
+    s0 -> merged["s0"]
+  }
+];
 
 BcThreshold[] := (mb + mc)^2;
 
@@ -439,6 +453,7 @@ $BcMixingMassDimensions = <|
   s -> 2,
   G2 -> 4,
   G3 -> 6,
+  alphaS -> 0,
   k -> 1,
   p -> 1
 |>;
@@ -880,6 +895,255 @@ NumericOPESummary[
     ],
     {ch, {"AA", "AB", "BB"}}
   ]
+];
+
+(* ---------------------------------------------------------------------- *)
+(* Perturbative alpha_s K-factor sensitivity                               *)
+(* ---------------------------------------------------------------------- *)
+
+$BcMixingDefaultKFactors = <|"AA" -> 0, "AB" -> 0, "BA" -> 0, "BB" -> 0|>;
+
+NormalizeKFactors[kFactors_?NumericQ] :=
+  AssociationMap[kFactors &, Keys[$BcMixingDefaultKFactors]];
+
+NormalizeKFactors[kFactors_: <||>] := Which[
+  AssociationQ[kFactors],
+    Join[$BcMixingDefaultKFactors, kFactors],
+  ListQ[kFactors],
+    Join[$BcMixingDefaultKFactors, Association[kFactors]],
+  True,
+    $BcMixingDefaultKFactors
+];
+
+KFactorAssociation[kAA_?NumericQ, kAB_?NumericQ, kBB_?NumericQ] :=
+  <|"AA" -> kAA, "AB" -> kAB, "BA" -> kAB, "BB" -> kBB|>;
+
+KFactorValue[channel_String, kFactors_: <||>] := Module[
+  {ch = ValidateChannel[channel], assoc = NormalizeKFactors[kFactors]},
+  Lookup[assoc, ch, 0]
+];
+
+AlphaSValue[Automatic, params_: $BcMixingDefaultParameters] :=
+  MergeDefaultParameters[params]["alphaS"];
+AlphaSValue[value_?NumericQ, params_: $BcMixingDefaultParameters] := value;
+
+PerturbativeKMultiplier[channel_String, kFactors_: <||>, alphaVal_: Automatic, params_: $BcMixingDefaultParameters] :=
+  1 + AlphaSValue[alphaVal, params]/Pi KFactorValue[channel, kFactors];
+
+MomentFromSummary[summary_Association, channel_String, order_String : "total"] := Module[
+  {ch = ValidateChannel[channel], ord = ValidateOrder[order]},
+  If[! KeyExistsQ[summary, ch], Return[$Failed]];
+  Switch[
+    ord,
+    "pert", summary[ch]["pert"],
+    "G2", summary[ch]["G2"],
+    "G3", summary[ch]["G3"],
+    "pertG2", summary[ch]["pertG2"],
+    "total", summary[ch]["total"],
+    _, $Failed
+  ]
+];
+
+AlphaSCorrectedMomentFromSummary[
+  summary_Association,
+  channel_String,
+  order_String : "total",
+  kFactors_: <||>,
+  alphaVal_: Automatic,
+  params_: $BcMixingDefaultParameters
+] := Module[
+  {ch = ValidateChannel[channel], ord = ValidateOrder[order], entry, pertK},
+  If[! KeyExistsQ[summary, ch], Return[$Failed]];
+  entry = summary[ch];
+  pertK = PerturbativeKMultiplier[ch, kFactors, alphaVal, params] entry["pert"];
+  Switch[
+    ord,
+    "pert", pertK,
+    "G2", entry["G2"],
+    "G3", entry["G3"],
+    "pertG2", pertK + entry["G2"],
+    "total", pertK + entry["G2"] + entry["G3"],
+    _, $Failed
+  ]
+];
+
+MixingAngleFromMomentValues[aa_?NumericQ, ab_?NumericQ, bb_?NumericQ] :=
+  NormalizeMixingAngle[1/2 ArcTan[aa - bb, -2 ab]];
+
+MixingAngleDegreesFromMomentValues[aa_?NumericQ, ab_?NumericQ, bb_?NumericQ] :=
+  N[180/Pi MixingAngleFromMomentValues[aa, ab, bb]];
+
+MixingAngleFromSummary[summary_Association, order_String : "total"] := Module[
+  {aa, ab, bb},
+  aa = MomentFromSummary[summary, "AA", order];
+  ab = MomentFromSummary[summary, "AB", order];
+  bb = MomentFromSummary[summary, "BB", order];
+  If[MemberQ[{aa, ab, bb}, $Failed], Return[$Failed]];
+  MixingAngleFromMomentValues[aa, ab, bb]
+];
+
+MixingAngleDegreesFromSummary[summary_Association, order_String : "total"] := Module[
+  {theta = MixingAngleFromSummary[summary, order]},
+  If[theta === $Failed, $Failed, N[180/Pi theta]]
+];
+
+AlphaSCorrectedMixingAngleFromSummary[
+  summary_Association,
+  kFactors_: <||>,
+  alphaVal_: Automatic,
+  order_String : "total",
+  params_: $BcMixingDefaultParameters
+] := Module[
+  {aa, ab, bb},
+  aa = AlphaSCorrectedMomentFromSummary[summary, "AA", order, kFactors, alphaVal, params];
+  ab = AlphaSCorrectedMomentFromSummary[summary, "AB", order, kFactors, alphaVal, params];
+  bb = AlphaSCorrectedMomentFromSummary[summary, "BB", order, kFactors, alphaVal, params];
+  If[MemberQ[{aa, ab, bb}, $Failed], Return[$Failed]];
+  MixingAngleFromMomentValues[aa, ab, bb]
+];
+
+AlphaSCorrectedMixingAngleDegreesFromSummary[
+  summary_Association,
+  kFactors_: <||>,
+  alphaVal_: Automatic,
+  order_String : "total",
+  params_: $BcMixingDefaultParameters
+] := Module[
+  {theta = AlphaSCorrectedMixingAngleFromSummary[summary, kFactors, alphaVal, order, params]},
+  If[theta === $Failed, $Failed, N[180/Pi theta]]
+];
+
+NumericMixingAngleWithKFactorsDegrees[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  kFactors_: <||>,
+  alphaVal_: Automatic,
+  order_String : "total",
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[NumericBorelPi]
+] := Module[
+  {summary = NumericOPESummary[m2Val, continuumVal, params, opts]},
+  AlphaSCorrectedMixingAngleDegreesFromSummary[summary, kFactors, alphaVal, order, params]
+];
+
+KFactorSensitivityRecordFromSummary[
+  summary_Association,
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  kFactors_: <||>,
+  alphaVal_: Automatic,
+  order_String : "total",
+  params_: $BcMixingDefaultParameters
+] := Module[
+  {assoc = NormalizeKFactors[kFactors], alpha = AlphaSValue[alphaVal, params],
+   thetaBase, thetaK, aaK, abK, bbK},
+  thetaBase = MixingAngleDegreesFromSummary[summary, order];
+  thetaK = AlphaSCorrectedMixingAngleDegreesFromSummary[summary, assoc, alpha, order, params];
+  aaK = AlphaSCorrectedMomentFromSummary[summary, "AA", order, assoc, alpha, params];
+  abK = AlphaSCorrectedMomentFromSummary[summary, "AB", order, assoc, alpha, params];
+  bbK = AlphaSCorrectedMomentFromSummary[summary, "BB", order, assoc, alpha, params];
+  <|
+    "M2" -> N[m2Val],
+    "s0" -> N[continuumVal],
+    "Order" -> order,
+    "alphaS" -> N[alpha],
+    "KAA" -> assoc["AA"],
+    "KAB" -> assoc["AB"],
+    "KBB" -> assoc["BB"],
+    "MultiplierAA" -> N[PerturbativeKMultiplier["AA", assoc, alpha, params]],
+    "MultiplierAB" -> N[PerturbativeKMultiplier["AB", assoc, alpha, params]],
+    "MultiplierBB" -> N[PerturbativeKMultiplier["BB", assoc, alpha, params]],
+    "PiAAAlphaS" -> aaK,
+    "PiABAlphaS" -> abK,
+    "PiBBAlphaS" -> bbK,
+    "ThetaBaseDeg" -> thetaBase,
+    "ThetaAlphaSDeg" -> thetaK,
+    "DeltaThetaDeg" -> NormalizeMixingAngleDegrees[thetaK - thetaBase]
+  |>
+];
+
+KFactorSensitivityRecord[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  kFactors_: <||>,
+  alphaVal_: Automatic,
+  order_String : "total",
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[NumericBorelPi]
+] := Module[
+  {summary = NumericOPESummary[m2Val, continuumVal, params, opts]},
+  KFactorSensitivityRecordFromSummary[summary, m2Val, continuumVal, kFactors, alphaVal, order, params]
+];
+
+KFactorSensitivityGrid[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  kSpec_,
+  alphaVal_: Automatic,
+  order_String : "total",
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[NumericBorelPi]
+] :=
+  KFactorSensitivityGrid[
+    m2Val, continuumVal, kSpec, kSpec, kSpec, alphaVal, order, params, opts
+  ];
+
+KFactorSensitivityGrid[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  kAASpec_,
+  kABSpec_,
+  kBBSpec_,
+  alphaVal_: Automatic,
+  order_String : "total",
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[NumericBorelPi]
+] := Module[
+  {kAAVals = ScanValues[kAASpec], kABVals = ScanValues[kABSpec], kBBVals = ScanValues[kBBSpec],
+   summary},
+  If[MemberQ[{kAAVals, kABVals, kBBVals}, $Failed], Return[$Failed]];
+  summary = NumericOPESummary[m2Val, continuumVal, params, opts];
+  Flatten[
+    Table[
+      KFactorSensitivityRecordFromSummary[
+        summary,
+        m2Val,
+        continuumVal,
+        KFactorAssociation[kAA, kAB, kBB],
+        alphaVal,
+        order,
+        params
+      ],
+      {kAA, kAAVals},
+      {kAB, kABVals},
+      {kBB, kBBVals}
+    ],
+    2
+  ]
+];
+
+KFactorSensitivityDataset[args___] :=
+  Dataset[KFactorSensitivityGrid[args]];
+
+KFactorSensitivityEnvelope[args___] := Module[
+  {records = KFactorSensitivityGrid[args], angles, deltas, minPos, maxPos, maxAbsPos},
+  If[records === $Failed || records === {}, Return[$Failed]];
+  angles = Lookup[records, "ThetaAlphaSDeg"];
+  deltas = Lookup[records, "DeltaThetaDeg"];
+  minPos = First[Ordering[angles, 1]];
+  maxPos = First[Ordering[angles, -1]];
+  maxAbsPos = First[Ordering[Abs[deltas], -1]];
+  <|
+    "ThetaBaseDeg" -> records[[1, "ThetaBaseDeg"]],
+    "ThetaMinDeg" -> angles[[minPos]],
+    "ThetaMaxDeg" -> angles[[maxPos]],
+    "DeltaThetaMinDeg" -> Min[deltas],
+    "DeltaThetaMaxDeg" -> Max[deltas],
+    "MaxAbsDeltaThetaDeg" -> Abs[deltas[[maxAbsPos]]],
+    "RecordAtMinTheta" -> records[[minPos]],
+    "RecordAtMaxTheta" -> records[[maxPos]],
+    "RecordAtMaxAbsDelta" -> records[[maxAbsPos]]
+  |>
 ];
 
 (* ---------------------------------------------------------------------- *)

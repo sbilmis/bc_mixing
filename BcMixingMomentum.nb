@@ -115,6 +115,37 @@ Notebook[{
     RowBox[{"OPESummary", "[", RowBox[{"M2", ",", "s0"}], "]"}]
   ], "Input"],
 
+  Cell["Alpha_s K-Factor Sensitivity", "Section"],
+  Cell["This is not a full NLO calculation. It rescales only the perturbative moment by 1 + alphaS K_ij/Pi and leaves G2/G3 unchanged.", "Text"],
+  Cell[BoxData[
+    RowBox[{"KFactorSensitivityRecord", "[", RowBox[
+      {
+        "10",
+        ",",
+        "55",
+        ",",
+        RowBox[{"KFactorAssociation", "[", RowBox[{"1", ",", "0", ",", RowBox[{"-", "1"}]}], "]"}],
+        ",",
+        "0.26",
+        ",",
+        "\"total\""
+      }], "]"}]
+  ], "Input"],
+  Cell[BoxData[
+    RowBox[{"KFactorSensitivityEnvelope", "[", RowBox[
+      {
+        "10",
+        ",",
+        "55",
+        ",",
+        RowBox[{"{", RowBox[{RowBox[{"-", "2"}], ",", "2", ",", "2"}], "}"}],
+        ",",
+        "0.26",
+        ",",
+        "\"total\""
+      }], "]"}]
+  ], "Input"],
+
   Cell["Borel Window And s0 Scans", "Section"],
   Cell["Use {min,max,step} specifications to scan trial Borel windows and continuum thresholds.", "Text"],
   Cell[BoxData[
