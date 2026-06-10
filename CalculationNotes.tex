@@ -122,6 +122,74 @@ $\langle g_s^3G^3\rangle$ is the standard vacuum-averaged single-line
 propagator term. Possible cross-line open-field $G^3$ terms need a separate
 derivation.
 
+\section{How to reproduce the calculation while reading this note}
+
+This section is a practical roadmap for a new student.  The goal is not to
+evaluate the final number immediately, but to check one layer at a time.  A
+useful order is:
+\begin{enumerate}
+  \item Check the current definitions and mass dimensions.  In particular,
+  verify that the factor \(p^\alpha/(m_b+m_c)\) in \(J^B_\mu\) makes the
+  \(AA\), \(AB\), and \(BB\) correlators dimensionally compatible.
+  \item Reproduce the Wick contractions for \(\Pi_{\mu\nu}^{AA}\),
+  \(\Pi_{\mu\nu}^{AB}\), and \(\Pi_{\mu\nu}^{BB}\).  At this stage do not
+  calculate any integrals; only check the order of gamma matrices and signs.
+  \item Apply the spin--1 projector
+  \[
+    P^{\mu\nu}_{(1)}
+    =
+    \frac{1}{3}
+    \left(g^{\mu\nu}-\frac{p^\mu p^\nu}{p^2}\right)
+  \]
+  and verify that a scalar invariant \(\Pi_1^{ij}\) is obtained.
+  \item For the perturbative term, put the two internal quarks on shell and
+  verify the three numerator functions \(N^{AA}\), \(N^{AB}\), and \(N^{BB}\)
+  given below.  This is the most important algebraic check.
+  \item Verify the phase-space factor
+  \[
+    \frac{N_c}{16\pi^2}
+    \frac{\sqrt{\lambda(s,m_b,m_c)}}{s}
+  \]
+  and the physical threshold \(s_{\rm th}=(m_b+m_c)^2\).
+  \item Perform the Borel integral
+  \[
+    \Pi^{ij}(M^2,s_0)
+    =
+    \int_{s_{\rm th}}^{s_0}ds\,e^{-s/M^2}\rho^{ij}(s)
+  \]
+  and only then insert the three Borel moments into the mixing-angle formula.
+  \item Add condensates only after the perturbative result is stable.  For
+  \(G^2\), keep the local single-line terms and the cross-line open-field
+  term conceptually separate; otherwise it is easy to double count or miss a
+  contribution.
+\end{enumerate}
+
+The Mathematica workflow mirrors these steps:
+\begin{center}
+\begin{tabular}{ll}
+Hand calculation object & Mathematica check \\
+\hline
+current dimensions & \texttt{MixingMassDimensionReport[]} \\
+projected trace & \texttt{Correlator[channel,"pert"]} \\
+perturbative numerator & \texttt{PerturbativeNumerator[channel,s]} \\
+spectral density & \texttt{PerturbativeSpectralDensity[channel,s]} \\
+Borel moment & \texttt{NumericBorelPi[channel,order,M2,s0]} \\
+mixing angle & \texttt{NumericMixingAngleDegrees[M2,s0,order]} \\
+coordinate trace & \texttt{CoordinateTraceKernel[channel,order]} \\
+coordinate angle & \texttt{CoordinateNumericMixingAngleDegrees[M2,s0,order]} \\
+\end{tabular}
+\end{center}
+
+When a new term is added, the recommended debugging procedure is:
+\begin{enumerate}
+  \item compute one channel, usually \(AA\), at one point;
+  \item check that the result is real;
+  \item check its mass dimension;
+  \item check its sign and size against the corresponding momentum-space
+  expression, if available;
+  \item only then scan over \(M^2\) and \(s_0\).
+\end{enumerate}
+
 \section{Correlators and spin-1 projection}
 
 Define
@@ -879,6 +947,673 @@ ExportStabilityDataCSV[m2Stability["Data"],
 ExportStabilityDataCSV[s0Stability["Data"],
   "BcMixingThetaVsS0_WangWindow.csv", "s0"];
 \end{verbatim}
+
+\section{Coordinate-space cross-check}
+
+The file \texttt{BcMixingCoordinate.wl} starts an independent coordinate-space
+validation of the perturbative part.  This is meant as a blind check of the
+momentum-space calculation, not as a replacement of it.  The same interpolating
+currents and the same normalization of the tensor current are used,
+\begin{equation}
+  J^A_\mu(x)=\bar b(x)\gamma_\mu\gamma_5c(x),
+  \qquad
+  J^B_\mu(x)=
+  i\bar b(x)\sigma_{\mu\alpha}
+  \frac{p^\alpha}{m_b+m_c}\gamma_5c(x).
+\end{equation}
+With these conventions, the coordinate-space perturbative correlators are
+\begin{align}
+  \Pi_{\mu\nu}^{AA}(p)
+  &=
+  -iN_c\int d^4x\,e^{ip\cdot x}
+  \mathrm{Tr}\!\left[
+    \gamma_\mu\gamma_5 S_c^{(0)}(-x)
+    \gamma_\nu\gamma_5 S_b^{(0)}(x)
+  \right],
+  \\
+  \Pi_{\mu\nu}^{AB}(p)
+  &=
+  -iN_c\int d^4x\,e^{ip\cdot x}
+  \mathrm{Tr}\!\left[
+    \gamma_\mu\gamma_5 S_c^{(0)}(-x)
+    i\sigma_{\nu\beta}\frac{p^\beta}{m_b+m_c}\gamma_5
+    S_b^{(0)}(x)
+  \right],
+  \\
+  \Pi_{\mu\nu}^{BB}(p)
+  &=
+  -iN_c\int d^4x\,e^{ip\cdot x}
+  \mathrm{Tr}\!\left[
+    i\sigma_{\mu\alpha}\frac{p^\alpha}{m_b+m_c}\gamma_5
+    S_c^{(0)}(-x)
+    i\sigma_{\nu\beta}\frac{p^\beta}{m_b+m_c}\gamma_5
+    S_b^{(0)}(x)
+  \right].
+\end{align}
+The sign difference between \(S_c(-x)\) and \(S_b(x)\) is implemented in the
+code by changing the sign of the \(\slashed{x}\) term.  The spin--1 invariant
+amplitude is extracted with the same transverse projector as in momentum
+space,
+\begin{equation}
+  \Pi_1^{ij}(p^2)
+  =
+  \frac{1}{3}
+  \left(g^{\mu\nu}-\frac{p^\mu p^\nu}{p^2}\right)
+  \Pi_{\mu\nu}^{ij}(p).
+\end{equation}
+This step is performed in \texttt{CoordinateTraceKernel[channel,"pert"]}.
+
+The free heavy-quark propagator is written in terms of modified Bessel
+functions,
+\begin{equation}
+  S_Q^{(0)}(x)
+  =
+  \frac{m_Q^2}{(2\pi)^2}
+  \left[
+    i\slashed{x}
+    \frac{K_2(m_Q\sqrt{-x^2})}{-x^2}
+    +
+    \frac{K_1(m_Q\sqrt{-x^2})}{\sqrt{-x^2}}
+  \right].
+\end{equation}
+This is the form used in the coordinate-space treatments of heavy systems.
+The derivative-free perturbative trace contains products of the form
+\begin{equation}
+  (\slashed{x})^a (p\cdot x)^b
+  \frac{K_\nu(m_c\sqrt{-x^2})K_\mu(m_b\sqrt{-x^2})}
+       {(\sqrt{-x^2})^n},
+\end{equation}
+where the tensor numerator is reduced by FeynCalc before the radial Fourier
+integral is performed.
+
+After Wick rotation to Euclidean momentum \(Q^2=-p^2\), the angular integral
+has the standard form
+\begin{equation}
+  i\int d^Dx\,e^{ip\cdot x}f(\sqrt{-x^2})
+  =
+  (2\pi)^{D/2}Q^{1-D/2}
+  \int_0^\infty dx\,x^{D/2}J_{D/2-1}(Qx)f(x).
+\end{equation}
+Therefore every scalar term is reduced to radial integrals
+\begin{equation}
+  I_{u\nu\mu}(Q;m_c,m_b)
+  =
+  \int_0^\infty dx\,x^{u-1}
+  J_v(Qx)K_\nu(m_cx)K_\mu(m_bx).
+\end{equation}
+For equal heavy masses, Huang--Liu give a compact hypergeometric expression
+for this integral.  For two different heavy masses, the Azizi et al.
+Bessel/Schwinger representation leads to the same physical two-body cut.  The
+installed perturbative spectral density is
+\begin{equation}
+  \rho_{\rm pert}^{ij}(s)
+  =
+  \frac{N_c}{16\pi^2}
+  \frac{\sqrt{\lambda(s,m_b,m_c)}}{s}\,
+  N^{ij}(s)\,
+  \left(m_b+m_c\right)^{-n_{ij}},
+\end{equation}
+where \(n_{AA}=0\), \(n_{AB}=1\), \(n_{BB}=2\), and
+\begin{align}
+  \lambda(s,m_b,m_c)
+  &=
+  s^2+m_b^4+m_c^4
+  -2sm_b^2-2sm_c^2-2m_b^2m_c^2,\\
+  k\cdot p\big|_{\rm cut}
+  &=
+  \frac{s+m_c^2-m_b^2}{2}.
+\end{align}
+The numerator functions are
+\begin{align}
+  N^{AA}(s)
+  &=
+  -\frac{4}{s}
+  \left[
+    2(k\cdot p)^2
+    +(3m_bm_c+m_c^2)s
+    -3s(k\cdot p)
+  \right],
+  \\
+  N^{AB}(s)
+  &=
+  12\left[-(m_b+m_c)(k\cdot p)+m_cs\right],
+  \\
+  N^{BB}(s)
+  &=
+  -4
+  \left[
+    4(k\cdot p)^2
+    +(3m_bm_c-m_c^2)s
+    -3s(k\cdot p)
+  \right].
+\end{align}
+A hand check should verify these three numerators from the projected
+coordinate-space trace and then verify the phase-space factor
+\(N_c\sqrt{\lambda}/(16\pi^2s)\).  In the code these expressions are stored in
+\texttt{CoordinatePerturbativeNumerator} and
+\texttt{CoordinatePerturbativeSpectralDensity}.
+
+The perturbative Borel moment is then evaluated as
+\begin{equation}
+  \Pi_{\rm pert}^{ij}(M^2,s_0)
+  =
+  \int_{(m_b+m_c)^2}^{s_0}ds\,
+  e^{-s/M^2}\rho_{\rm pert}^{ij}(s),
+\end{equation}
+and the angle is obtained from the same diagonalization formula,
+\begin{equation}
+  \theta_{\rm coord}^{\rm pert}(M^2,s_0)
+  =
+  \frac12
+  \operatorname{ArcTan}
+  \left[
+    \Pi_{\rm pert}^{AA}-\Pi_{\rm pert}^{BB},
+    -2\Pi_{\rm pert}^{AB}
+  \right].
+\end{equation}
+
+\subsection{What should be written in the journal paper}
+
+If the paper presents the coordinate-space calculation as the main method,
+the main text should not merely state that the result was obtained with
+Mathematica.  It should show enough of the analytic reduction that a reader
+can see where the physical cut and continuum subtraction enter.  A compact
+but sufficient presentation would include:
+\begin{enumerate}
+  \item the two currents, including the tensor-current normalization
+  \(p^\alpha/(m_b+m_c)\);
+  \item the coordinate-space correlators after Wick contraction;
+  \item the heavy-quark propagator in terms of \(K_\nu(m_Q\sqrt{-x^2})\);
+  \item the spin--1 projection used to define \(\Pi_1^{ij}\);
+  \item the generic Bessel integral generated by the Fourier transform;
+  \item the way the Bessel functions are converted to Schwinger-parameter
+  integrals;
+  \item the emergence of Dirac delta functions after the Borel transform;
+  \item the resulting Heaviside support conditions or, equivalently, the
+  integration limits that implement continuum subtraction;
+  \item the final perturbative spectral densities, preferably in the compact
+  \(N^{ij}(s)\sqrt{\lambda}/s\) form;
+  \item the statement that the current coordinate-space condensate check
+  includes local \(G^2\) and \(G^3\) single-line terms, while the full
+  dimension--4 coordinate-space result additionally needs the
+  \(S_c^{(G)}S_b^{(G)}\) cross-line term.
+\end{enumerate}
+The main text can contain the compact formulas and the final spectral
+densities.  Longer channel-by-channel trace expressions and the local
+condensate Borel kernels are better placed in an appendix or supplemental
+file.
+
+\subsection{Role of the Azizi et al. method}
+
+The main technical role of the Azizi et al. method is to make continuum
+subtraction well defined for systems with more than one heavy propagator in
+coordinate space.  With one heavy quark, the coordinate-space Fourier
+transform contains one modified Bessel function and can often be reduced to
+ordinary hypergeometric functions.  With two heavy quarks, the Fourier
+transform contains products
+\begin{equation}
+  J_v(Qx)K_\nu(m_cx)K_\mu(m_bx),
+\end{equation}
+and a naive treatment of the Bessel functions can lead to parameter integrals
+with apparent endpoint divergences or ambiguous continuum subtraction.
+
+Azizi et al. avoid this by using an integral representation of the modified
+Bessel functions and then applying the Borel transformations before doing all
+parameter integrations.  In this order of operations, the Borel transforms
+generate Dirac delta functions.  These delta functions fix combinations of
+Schwinger parameters and convert the would-be divergent parameter domains into
+finite domains with explicit support conditions.  The support conditions are
+usually written as Heaviside functions or, after solving the inequalities, as
+modified integration limits.
+
+Without this organization one would have to handle the delta functions,
+derivatives of delta functions, endpoint constraints, and continuum subtraction
+analytically by hand for each term.  That is possible, but it is error-prone
+for two heavy masses because every numerator power changes the derivative
+order of the delta function or the power of the support factor.  The Azizi
+formulation gives a systematic recipe:
+\begin{align}
+  K_\nu K_\mu
+  &\longrightarrow
+  \text{Schwinger parameters}
+  \longrightarrow
+  \text{Borel delta functions}
+  \nonumber\\
+  &\longrightarrow
+  \Theta\text{-functions}
+  \longrightarrow
+  \text{finite integration limits}.
+\end{align}
+In the paper, this chain should be shown once for a generic term.  The final
+channel-dependent spectral densities can then be quoted in compact form.
+
+\subsection{Direct coordinate-space route without the Azizi reduction}
+
+It is useful to state explicitly what would happen if one deliberately did
+not use the Azizi et al. organization.  This is not the route used by the
+current numerical code, and it should be treated as an independent analytic
+cross-check or appendix-level exercise.  The starting point is still the same
+coordinate-space correlator,
+\begin{equation}
+  \Pi_{\mu\nu}^{ij}(p)
+  =
+  -iN_c\int d^4x\,e^{ip\cdot x}
+  \mathrm{Tr}\!\left[
+    \Gamma_\mu^i S_c(-x)\Gamma_\nu^j S_b(x)
+  \right],
+\end{equation}
+but after the Dirac trace one keeps the Fourier transform of each Bessel
+product directly.  A typical scalar integral has the form
+\begin{equation}
+  \mathcal I_{n\mu\nu}^{(r)}(p^2)
+  =
+  \int d^4x\,e^{ip\cdot x}
+  (p\cdot x)^r(x^2)^n
+  K_\mu(m_c\sqrt{-x^2})K_\nu(m_b\sqrt{-x^2}) .
+\end{equation}
+The powers of \(p\cdot x\) may be generated by differentiating the scalar
+Fourier integral with respect to \(p_\alpha\),
+\begin{equation}
+  x_\alpha e^{ip\cdot x}
+  =
+  \frac{1}{i}\frac{\partial}{\partial p^\alpha}e^{ip\cdot x},
+\end{equation}
+or by doing Lorentz tensor reduction before the radial integral.  The angular
+integration then gives integrals containing
+\begin{equation}
+  J_1(Qx)K_\mu(m_cx)K_\nu(m_bx),
+  \qquad Q^2=-p^2 .
+\end{equation}
+At this stage the direct method must extract the discontinuity in
+\(p^2=s\) from the Bessel product itself.  If Schwinger parameters are
+introduced only as a calculational aid, one meets distributions of the type
+\begin{equation}
+  \delta\!\left(s-\frac{m_c^2}{x}
+                 -\frac{m_b^2}{1-x}\right),
+\end{equation}
+and, when numerator powers or derivatives act on the Fourier kernel,
+derivatives of the same delta function,
+\begin{equation}
+  \delta^{(n)}\!\left(s-\bar s(x)\right),
+  \qquad
+  \bar s(x)=\frac{m_c^2}{x}+\frac{m_b^2}{1-x}.
+\end{equation}
+These objects must be treated analytically.  For example,
+\begin{equation}
+  \int_0^1 dx\,F(x)\,
+  \delta\!\left(s-\bar s(x)\right)
+  =
+  \sum_{x_i}
+  \frac{F(x_i)}
+       {|\bar s'(x_i)|},
+  \qquad
+  \bar s(x_i)=s,
+\end{equation}
+where the roots \(x_i\) exist only if \(s\geq(m_b+m_c)^2\).  This condition
+is the same physical threshold and may be written as a Heaviside factor,
+\begin{equation}
+  \Theta\!\left(s-(m_b+m_c)^2\right).
+\end{equation}
+For derivative delta functions one must integrate by parts,
+\begin{equation}
+  \int dx\,F(x)\,\delta^{(n)}(s-\bar s(x)),
+\end{equation}
+carefully keeping the Jacobian factors and verifying that no endpoint terms
+survive after the physical support restriction is imposed.
+
+Thus the direct route has the schematic structure
+\begin{align}
+  \text{Bessel product}
+  &\longrightarrow
+  \text{radial Fourier transform}
+  \longrightarrow
+  \operatorname{Disc}_{p^2=s}
+  \nonumber\\
+  &\longrightarrow
+  \delta(s-\bar s),\ \delta'(s-\bar s),\ldots
+  \longrightarrow
+  \Theta(s-s_{\rm th})
+  \longrightarrow
+  x_\pm(s).
+\end{align}
+This is analytically possible, but it is precisely the bookkeeping that the
+Azizi et al. method systematizes.  The direct section is therefore best used
+as a validation path: derive one channel, preferably \(AA\), all the way to
+the same perturbative spectral density and confirm that the final answer is
+proportional to
+\begin{equation}
+  \frac{\sqrt{\lambda(s,m_b,m_c)}}{s}
+  \Theta\!\left(s-(m_b+m_c)^2\right).
+\end{equation}
+Only after the \(AA\) channel is reproduced should one repeat the calculation
+for \(AB\) and \(BB\), because those channels additionally test the tensor
+current normalization \(1/(m_b+m_c)\).  The condensate terms are substantially
+more cumbersome in this route, since local \(G^2\), local \(G^3\), and the
+open-field \(S_c^{(G)}S_b^{(G)}\) term can generate higher derivatives of the
+same support delta functions.
+
+\subsection{Where the Dirac delta and Heaviside functions enter}
+
+The reason the current Mathematica output does not visibly display
+\(\delta\)-functions and Heaviside functions is not that they are absent from
+the coordinate-space method.  Rather, in the current implementation they have
+already been integrated out or replaced by equivalent integration limits.
+
+The coordinate-space product of two massive propagators generates scalar
+terms of the schematic form
+\begin{equation}
+  T
+  =
+  \int d^4x\,e^{ip\cdot x}
+  \frac{
+    K_\nu(m_c\sqrt{-x^2})K_\mu(m_b\sqrt{-x^2})
+  }{(\sqrt{-x^2})^n}
+  \times \{\text{polynomial in }x^2,p\cdot x,p^2\}.
+\end{equation}
+Using an integral representation for each modified Bessel function, one obtains
+Schwinger-parameter integrals of the schematic form
+\begin{equation}
+  T
+  \sim
+  \int d\rho\,dv\,dw\,
+  \rho^a v^b w^c(1-v-w)^d
+  \exp\left[
+    -\frac{m_c^2}{\rho v}
+    -\frac{m_b^2}{\rho w}
+    -\frac{Q^2}{4\rho}
+  \right],
+  \qquad Q^2=-p^2 .
+\end{equation}
+This is the stage emphasized in the Azizi et al. treatment.  In applications
+with two external virtualities, successive Borel transformations produce
+Dirac delta functions that fix combinations of the Schwinger parameters.  A
+typical reduced structure is
+\begin{equation}
+  \rho(s_1,s_2)
+  \sim
+  \int dz\,dy\,dl\,
+  F(z,y,l)\,
+  \delta\!\left[
+    s_1-l-\frac{m_c^2}{z(1-y)}-\frac{m_b^2}{zy}
+  \right]
+  \delta(s_2-s_1),
+\end{equation}
+up to derivatives of the delta functions when powers of the external
+invariants appear.  After the \(l\)-integration, these delta functions turn
+into support restrictions,
+\begin{align}
+  &\int_0^\infty dl\,
+  F(l)\,
+  \delta\!\left(
+    s-l-A
+  \right)
+  =
+  F(s-A)\,\Theta(s-A),
+  \\
+  &A
+  =
+  \frac{m_c^2}{z(1-y)}
+  +
+  \frac{m_b^2}{zy}.
+\end{align}
+Thus one obtains
+\begin{equation}
+  \Theta\!\left(
+    s_1-\frac{m_c^2}{z(1-y)}-\frac{m_b^2}{zy}
+  \right),
+\end{equation}
+or equivalently into restricted integration limits.  These \(\Theta\)-functions
+are what remove apparent endpoint divergences in the Schwinger-parameter
+integrals.
+
+For the present two-point mixing correlator there is one external invariant,
+\(p^2=s\), and the same physics appears in a simpler form: the spectral density
+has support only above
+\begin{equation}
+  s_{\rm th}=(m_b+m_c)^2,
+\end{equation}
+or, in a Feynman-parameter representation,
+\begin{equation}
+  s >
+  \bar s(x)
+  =
+  \frac{m_c^2x+m_b^2(1-x)}{x(1-x)} .
+\end{equation}
+Solving \(\bar s(x)<s_0\) gives the finite integration interval
+\begin{equation}
+  x_-(s_0)<x<x_+(s_0),
+\end{equation}
+where
+\begin{equation}
+  x_\pm(s_0)
+  =
+  \frac{s_0+m_b^2-m_c^2
+  \pm\sqrt{\lambda(s_0,m_b,m_c)}}{2s_0}.
+\end{equation}
+This is the explicit replacement used in the numerical integrations:
+\begin{equation}
+  \int_0^1 dx\,
+  F(x)\,
+  \Theta\!\left(s_0-\bar s(x)\right)
+  \quad\longrightarrow\quad
+  \int_{x_-(s_0)}^{x_+(s_0)}dx\,F(x).
+\end{equation}
+Equivalently, when writing the dispersion integral, the same support appears
+as
+\begin{equation}
+  \int ds\,\rho(s)
+  =
+  \int ds\,
+  \Theta\!\left(s-(m_b+m_c)^2\right)
+  \rho(s),
+\end{equation}
+with the continuum-subtracted Borel moment
+\begin{equation}
+  \Pi(M^2,s_0)
+  =
+  \int_{(m_b+m_c)^2}^{s_0}
+  ds\,e^{-s/M^2}\rho(s).
+\end{equation}
+Thus the Heaviside support has not disappeared; it is encoded in the lower
+threshold and in the \(x_\pm\) integration limits used by the numerical Borel
+integrals.
+
+The present coordinate-space code has two layers:
+\begin{enumerate}
+  \item For the perturbative check, it installs the final reduced spectral
+  density proportional to
+  \(\sqrt{\lambda(s,m_b,m_c)}\,N^{ij}(s)/s\).  Therefore no intermediate
+  \(\delta\)- or \(\Theta\)-functions appear in the output.
+  \item For the local \(G^2\) and \(G^3\) checks, it uses the already-tested
+  Feynman/Schwinger direct-Borel reduction helpers from
+  \texttt{BcMixingMomentum.wl}.  In this representation the support is again
+  implemented by the integration limits \(x_\pm(s_0)\), not by printing
+  explicit Heaviside functions.
+\end{enumerate}
+For a journal paper, it is therefore important to say explicitly that the
+Dirac delta functions and Heaviside functions occur at the Schwinger/Borel
+reduction stage, but in the numerical implementation they are already
+integrated out and appear as physical thresholds and finite parameter
+integration domains.
+
+For a student checking this section by hand, the suggested coordinate-space
+exercise is:
+\begin{enumerate}
+  \item Start from the \(AA\) current only.  Insert \(S_c^{(0)}(-x)\) and
+  \(S_b^{(0)}(x)\) and keep track of the sign of the \(\slashed{x}\) term.
+  \item Evaluate the Dirac trace before projection.  The trace should reduce
+  to scalar combinations of \(x^2\), \(p^2\), and \(p\cdot x\), multiplied by
+  products of \(K_1\) and \(K_2\).
+  \item Apply the transverse projector and replace
+  \(p^2\to s\), \(x^2\to x^2\), and \(p\cdot x\to px\).  This is what
+  \texttt{CoordinateScalarize} does.
+  \item Identify the radial integral associated with each scalar term.  Terms
+  with powers of \(p\cdot x\) can be generated by differentiating the Fourier
+  factor with respect to \(p_\mu\), or equivalently by using tensor reduction
+  before the angular integral.
+  \item Use the Bessel/Schwinger representation to obtain the physical cut in
+  \(s\).  The final perturbative answer must be proportional to
+  \(\sqrt{\lambda(s,m_b,m_c)}\) and vanish at \(s=(m_b+m_c)^2\).
+  \item Repeat the numerator check for \(AB\) and \(BB\).  These two channels
+  are the best tests of the tensor-current normalization because each \(B\)
+  current contributes one factor \(1/(m_b+m_c)\).
+\end{enumerate}
+
+The coordinate-space notebook separates these checks intentionally:
+\begin{itemize}
+  \item first evaluate only \texttt{BcMixingCoordinate.wl};
+  \item record \texttt{CoordinateTraceKernel["AA","pert"]};
+  \item record \texttt{CoordinatePerturbativeSpectralDensity["AA",s]};
+  \item compute \texttt{CoordinateNumericMixingAngleDegrees[8,54,"pert"]};
+  \item only after this blind check, load \texttt{BcMixingMomentum.wl} and
+  compare with
+\begin{verbatim}
+CoordinateCompareToMomentum[8,54]
+\end{verbatim}
+\end{itemize}
+
+The Mathematica entry points are
+\begin{verbatim}
+Get["BcMixingCoordinate.wl"];
+CoordinateCheckEnvironment[]
+CoordinateTraceKernel["AA", "pert"] // Short
+CoordinateNumericMixingAngleDegrees[8, 54, "pert"]
+CoordinateWangWindowGrid[]
+\end{verbatim}
+If the momentum-space file is also loaded, the two perturbative calculations
+can be compared by
+\begin{verbatim}
+Get["BcMixingMomentum.wl"];
+Get["BcMixingCoordinate.wl"];
+CoordinateCompareToMomentum[8, 54]
+\end{verbatim}
+which gives
+\begin{verbatim}
+<|"CoordinatePertDeg" -> 43.28944792785432,
+  "MomentumPertDeg" -> 43.28944792785432,
+  "DifferenceDeg" -> 0.|>
+\end{verbatim}
+for \(M^2=8~\mathrm{GeV}^2\) and \(s_0=54~\mathrm{GeV}^2\).
+
+For the next stage, the coordinate-space \(G^2\) and \(G^3\) propagator
+kernels are already written as extension points.  The local-condensate
+heavy-quark terms used in the code are
+\begin{align}
+  S_Q^{(G^2)}(x)
+  &=
+  -\frac{\langle g_s^2G^2\rangle}
+  {2^6\,3\,(2\pi)^2}
+  \left[
+    (im_Q\slashed{x}-6)
+    \frac{K_1(m_Q\sqrt{-x^2})}{\sqrt{-x^2}}
+    +4m_Qx^2
+    \frac{K_2(m_Q\sqrt{-x^2})}{-x^2}
+  \right],
+  \\
+  S_Q^{(G^3)}(x)
+  &=
+  \frac{\langle g_s^3G^3\rangle}
+  {2^8\,3^2\,(2\pi)^2}
+  \left[
+    -\frac{i\slashed{x}x^2}{m_Q}
+    \frac{K_1(m_Q\sqrt{-x^2})}{\sqrt{-x^2}}
+    +4i\slashed{x}x^2
+    \frac{K_2(m_Q\sqrt{-x^2})}{-x^2}
+  \right.
+  \nonumber\\
+  &\hspace{4.0cm}\left.
+    +\frac{10x^4}{m_Q}
+    \frac{K_2(m_Q\sqrt{-x^2})}{-x^2}
+    +x^4
+    \frac{K_1(m_Q\sqrt{-x^2})}{\sqrt{-x^2}}
+  \right].
+\end{align}
+The dimension--4 coordinate-space check must include
+\begin{equation}
+  S_c^{(G^2)}(-x)S_b^{(0)}(x),\qquad
+  S_c^{(0)}(-x)S_b^{(G^2)}(x),
+\end{equation}
+and, if the open-field propagator is kept explicitly, the cross-line
+\(S_c^{(G)}(-x)S_b^{(G)}(x)\) term.  The present coordinate file records the
+local \(G^2\) and \(G^3\) kernels and can build their projected trace kernels,
+for example
+\begin{verbatim}
+CoordinateTraceKernel["AA", "G2c"]      (* S_c^(G2) S_b^(0) *)
+CoordinateTraceKernel["AA", "G2b"]      (* S_c^(0)  S_b^(G2) *)
+CoordinateTraceKernel["AA", "G2local"]  (* local sum of the two *)
+CoordinateTraceKernel["AA", "G3local"]  (* local single-line G3 sum *)
+\end{verbatim}
+At this stage, however, the numerical coordinate-space spectral/Borel
+integration is enabled directly only for \texttt{"pert"}.  A reduced
+Bessel/Schwinger integration bridge has now been added for the local
+single-line condensate pieces.  It is used only after loading
+\texttt{BcMixingMomentum.wl}, because that file already contains the tested
+Feynman/Schwinger parameter reduction and direct Borel transform.  The
+coordinate notebook therefore keeps these cells in an optional section:
+\begin{verbatim}
+Get["BcMixingMomentum.wl"];
+Get["BcMixingCoordinate.wl"];
+
+CoordinateLocalCondensateSummary[8, 54]
+CoordinateNumericMixingAngleDegrees[8, 54, "pertG2local"]
+CoordinateNumericMixingAngleDegrees[8, 54, "totalLocal"]
+CoordinateLocalCondensateComparisonToMomentum[8, 54]
+CoordinateLocalCondensateComparisonToMomentum[8, 54,
+  $BcCoordinateDefaultParameters, "IncludeG3" -> True]
+\end{verbatim}
+The labels mean
+\begin{align}
+  G2c &: S_c^{(G^2)}(-x)S_b^{(0)}(x),&
+  G2b &: S_c^{(0)}(-x)S_b^{(G^2)}(x),\\
+  G3c &: S_c^{(G^3)}(-x)S_b^{(0)}(x),&
+  G3b &: S_c^{(0)}(-x)S_b^{(G^3)}(x).
+\end{align}
+At \(M^2=8~\mathrm{GeV}^2\), \(s_0=54~\mathrm{GeV}^2\), the local-coordinate
+test gives
+\begin{equation}
+  \theta_{\rm pert+G2local}=43.321950845^\circ,\qquad
+  \theta_{\rm pert+G2local+G3local}=43.308150036^\circ.
+\end{equation}
+The word ``local'' is important.  It means that the condensate is inserted on
+one heavy-quark line at a time.  For \(G^3\), this reproduces the
+single-line momentum-space \(G^3\) implementation used here.  For \(G^2\), it
+does not yet reproduce the complete dimension--4 result, because there is also
+an open-field term in which one background gluon is attached to the charm line
+and one to the bottom line.
+
+Numerically, for the \(AA\) channel at the same test point,
+\begin{align}
+  \Pi_{G^2,\mathrm{local}}^{AA}
+  &=
+  -3.1655383105\times10^{-4},\\
+  \Pi_{G^2,\mathrm{full\ momentum}}^{AA}
+  &=
+  -3.6293326185\times10^{-4},\\
+  \Pi_{G^2,\mathrm{residual}}^{AA}
+  &=
+  -4.6379430799\times10^{-5}.
+\end{align}
+This residual is the target for the missing coordinate-space
+\(S_c^{(G)}(-x)S_b^{(G)}(x)\) derivation.  By contrast, the local coordinate
+and momentum-space \(G^3\) moments agree numerically at this point:
+\begin{align}
+  \Pi_{G^3,\mathrm{local}}^{AA}
+  &=
+  6.8538572092\times10^{-5},\\
+  \Pi_{G^3,\mathrm{momentum}}^{AA}
+  &=
+  6.8538572092\times10^{-5}.
+\end{align}
+This should not yet be quoted as the complete condensate-corrected coordinate
+result.  The reason is that the full dimension--4 contribution also contains
+the cross-line \(S_c^{(G)}(-x)S_b^{(G)}(x)\) term.  The helper
+\texttt{CoordinateLocalCondensateComparisonToMomentum} reports the difference
+between the full momentum-space \(G^2\) moment and the local coordinate
+\(G2c+G2b\) moment; this residual is the piece that must be reproduced from
+the open-field coordinate-space propagator.  The \(G^3\) comparison is
+optional because it is slower; setting \texttt{"IncludeG3" -> True} checks
+that the local coordinate \(G3c+G3b\) integration matches the momentum-space
+\(G^3\) contribution.
 
 \section{Checklist for independent verification}
 

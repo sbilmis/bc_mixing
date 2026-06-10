@@ -528,6 +528,83 @@ light-quark propagator is expanded in \(x\)-space condensates. For \(B_c\),
 coordinate space would lead to products of massive Bessel functions for the
 \(b\) and \(c\) propagators and is less direct for FeynCalc.
 
+## Coordinate-Space Cross-Check
+
+The file `BcMixingCoordinate.wl` starts an independent coordinate-space
+validation route. It defines the heavy-quark propagator in \(x\)-space,
+
+\[
+S_Q^{(0)}(x)=
+\frac{m_Q^2}{(2\pi)^2}
+\left[
+i\slashed{x}\frac{K_2(m_Q\sqrt{-x^2})}{(-x^2)}
++\frac{K_1(m_Q\sqrt{-x^2})}{\sqrt{-x^2}}
+\right],
+\]
+
+builds the coordinate-space trace kernels for \(AA\), \(AB\), \(BA\), and
+\(BB\), and installs the perturbative spectral densities obtained after the
+Bessel/Schwinger reduction described by Huang--Liu and Azizi et al.
+
+Usage:
+
+```wl
+Get["BcMixingCoordinate.wl"];
+CoordinateCheckEnvironment[]
+CoordinateTraceKernel["AA", "pert"] // Short
+CoordinateNumericMixingAngleDegrees[8, 54, "pert"]
+CoordinateWangWindowGrid[]
+```
+
+If `BcMixingMomentum.wl` is already loaded, one can compare the perturbative
+angle directly:
+
+```wl
+Get["BcMixingMomentum.wl"];
+Get["BcMixingCoordinate.wl"];
+CoordinateCompareToMomentum[8, 54]
+```
+
+This currently returns equal perturbative values at \(M^2=8~{\rm GeV}^2\),
+\(s_0=54~{\rm GeV}^2\):
+
+```wl
+<|"CoordinatePertDeg" -> 43.28944792785432,
+  "MomentumPertDeg" -> 43.28944792785432,
+  "DifferenceDeg" -> 0.|>
+```
+
+The coordinate-space perturbative result now matches the momentum-space
+result exactly at the Wang-window test point. The coordinate file also includes
+a local-condensate bridge for the single-line \(G^2\) and \(G^3\) pieces:
+
+```wl
+CoordinateLocalCondensateSummary[8, 54]
+CoordinateNumericMixingAngleDegrees[8, 54, "pertG2local"]
+CoordinateNumericMixingAngleDegrees[8, 54, "totalLocal"]
+CoordinateLocalCondensateComparisonToMomentum[8, 54]
+CoordinateLocalCondensateComparisonToMomentum[8, 54,
+  $BcCoordinateDefaultParameters, "IncludeG3" -> True]
+```
+
+At \(M^2=8~{\rm GeV}^2\), \(s_0=54~{\rm GeV}^2\), the local coordinate-space
+checks give
+
+```wl
+theta[pert + G2local]          = 43.321950845 deg
+theta[pert + G2local + G3local] = 43.308150036 deg
+```
+
+Here `local` means that the condensate is inserted on one heavy-quark line at
+a time. The full dimension-4 coordinate-space \(G^2\) calculation still needs
+the open-field cross-line contribution \(S_c^{(G)}(-x)S_b^{(G)}(x)\), which is
+the remaining analytic target for the coordinate-space blind check.
+
+`CalculationNotes.tex` also contains a separate subsection describing the
+direct coordinate-space route without using the Azizi et al. reduction. That
+section is documentary only; it does not change the working Mathematica
+calculation.
+
 For OPE convergence checks:
 
 ```wl
