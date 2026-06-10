@@ -632,6 +632,165 @@ about
   \max|\Delta\theta|\simeq 7.52^\circ.
 \end{equation}
 
+\section{Monte Carlo uncertainty propagation}
+
+The numerical input table gives central values,
+\begin{equation}
+  m_b=4.18~\mathrm{GeV},\qquad
+  m_c=1.27~\mathrm{GeV},
+\end{equation}
+\begin{equation}
+  \langle g_s^2G^2\rangle = 4\pi^2(0.012)~\mathrm{GeV}^4,
+  \qquad
+  \langle g_s^3G^3\rangle = 0.57~\mathrm{GeV}^6.
+\end{equation}
+For the final quoted error these inputs should be assigned allowed intervals
+or probability distributions.  In the present implementation we use uniform
+sampling over editable intervals.  A Monte Carlo point is
+\begin{equation}
+  X_i =
+  \left\{
+    m_b^{(i)},m_c^{(i)},G_2^{(i)},G_3^{(i)},
+    M_i^2,s_{0,i}
+  \right\},
+\end{equation}
+where
+\begin{equation}
+  G_2\equiv\langle g_s^2G^2\rangle,\qquad
+  G_3\equiv\langle g_s^3G^3\rangle.
+\end{equation}
+Each component is drawn from the user-specified interval
+\begin{equation}
+  x^{(i)}\sim U(x_{\min},x_{\max}).
+\end{equation}
+Fixed parameters are implemented by setting \(x_{\min}=x_{\max}\), or in the
+Mathematica code by passing a single number instead of an interval.
+
+The current working ranges in the code are
+\begin{align}
+  m_b &\in [4.16,4.21]~\mathrm{GeV},&
+  m_c &\in [1.25,1.29]~\mathrm{GeV},\\
+  G_2 &\in 4\pi^2[0.006,0.018]~\mathrm{GeV}^4,&
+  G_3 &\in [0.28,0.86]~\mathrm{GeV}^6,\\
+  M^2 &\in [8,12]~\mathrm{GeV}^2,&
+  s_0 &\in [50,60]~\mathrm{GeV}^2.
+\end{align}
+Equivalently, in the central-value-plus-error notation useful for the paper,
+\begin{align}
+  m_b &= (4.185\pm0.025)~\mathrm{GeV},&
+  m_c &= (1.27\pm0.02)~\mathrm{GeV},\\
+  G_2 &= 4\pi^2(0.012\pm0.006)~\mathrm{GeV}^4,&
+  G_3 &= (0.57\pm0.29)~\mathrm{GeV}^6,\\
+  M^2 &= (10\pm2)~\mathrm{GeV}^2,&
+  s_0 &= (55\pm5)~\mathrm{GeV}^2.
+\end{align}
+These are not final physics choices. They are placeholders for the scan layer
+and should be replaced by the intervals adopted in the analysis.
+
+For every random point we impose the physical continuum condition
+\begin{equation}
+  s_{0,i} > \left(m_b^{(i)}+m_c^{(i)}\right)^2.
+\end{equation}
+Accepted points are evaluated with the same OPE formula as above,
+\begin{equation}
+  \theta_i =
+  \frac{1}{2}\operatorname{ArcTan}
+  \left[
+    \Pi_1^{AA}(X_i)-\Pi_1^{BB}(X_i),
+    -2\Pi_1^{AB}(X_i)
+  \right],
+\end{equation}
+using the chosen OPE order, normally ``total'' for
+\(\Pi_{\rm pert}+\Pi_{G^2}+\Pi_{G^3}\).
+For the present fast uncertainty scan we keep the triple-gluon term switched
+off by default.  In the Mathematica implementation this is controlled by
+\texttt{\$BcMixingMonteCarloIncludeG3=False} or by the option
+\texttt{"IncludeG3" -> False}.  With this switch, a requested ``total'' Monte
+Carlo scan is evaluated as ``pertG2'',
+\begin{equation}
+  \Pi_{\rm MC}^{ij}
+  =
+  \Pi_{\rm pert}^{ij}+\Pi_{G^2}^{ij},
+\end{equation}
+and the \(G^3\) contribution can be restored later by setting
+\texttt{"IncludeG3" -> True}.
+
+The central value and Gaussian-width estimate are then
+\begin{equation}
+  \bar\theta = \frac{1}{N}\sum_{i=1}^N \theta_i,
+  \qquad
+  \sigma_{\theta,\mathrm{Gauss}} =
+  \sqrt{\frac{1}{N}\sum_{i=1}^N
+  \left(\theta_i-\bar\theta\right)^2}.
+\end{equation}
+The code also reports the unbiased sample standard deviation, median, minimum,
+maximum, and the \(16\%\) and \(84\%\) quantiles. These quantiles are useful
+because the resulting \(\theta\) distribution may not be exactly Gaussian.
+
+The Mathematica entry point is
+\begin{verbatim}
+nSamples = 500;
+histBins = 25;
+m2Range = {8.0, 12.0};
+s0Range = {50.0, 60.0};
+
+ranges = Join[
+  $BcMixingDefaultUncertaintyRanges,
+  <|"M2" -> m2Range, "s0" -> s0Range|>
+];
+
+uncertaintyRun = MonteCarloMixingAngleUncertainty[
+  nSamples, ranges, "total",
+  "IncludeG3" -> False,
+  "Seed" -> 1234,
+  "Progress" -> True
+];
+uncertaintyRun["Summary"]
+MonteCarloMixingAngleHistogram[uncertaintyRun, histBins]
+MonteCarloMixingAnglePublicationHistogram[uncertaintyRun, histBins]
+\end{verbatim}
+where \texttt{ranges} is an association such as
+\begin{verbatim}
+<|
+  "mb" -> {4.16, 4.21},
+  "mc" -> {1.25, 1.29},
+  "G2" -> {4 Pi^2 0.006, 4 Pi^2 0.018},
+  "G3" -> {0.28, 0.86},
+  "M2" -> {8.0, 12.0},
+  "s0" -> {50.0, 60.0}
+|>
+\end{verbatim}
+The number of random points, the input intervals, and the Borel window are
+therefore all editable without touching the algebra.
+
+The first argument, for example \texttt{500}, is the number of random accepted
+Monte Carlo points. The option \texttt{"Seed" -> 1234} fixes the random-number
+seed so the sample is reproducible. The Monte Carlo result is called
+\texttt{uncertaintyRun}, not \texttt{mc}, to avoid confusion with the charm
+mass parameter \texttt{"mc"}. To vary only the Borel window and the
+continuum threshold while keeping the QCD inputs fixed at their central values,
+one can use
+\begin{verbatim}
+ranges = Join[
+  $BcMixingDefaultUncertaintyRanges,
+  <|
+    "mb" -> 4.18,
+    "mc" -> 1.27,
+    "G2" -> 4 Pi^2 0.012,
+    "G3" -> 0.57,
+    "M2" -> {8.0, 12.0},
+    "s0" -> {50.0, 60.0}
+  |>
+];
+\end{verbatim}
+The accepted random points and the summary can be exported for replotting:
+\begin{verbatim}
+ExportMonteCarloMixingAngleSamples[uncertaintyRun, "BcMixingMonteCarloSamples.csv"];
+ExportMonteCarloMixingAngleSummary[uncertaintyRun, "BcMixingMonteCarloSummary.csv"];
+Export["BcMixingMonteCarloHistogram.pdf",
+  MonteCarloMixingAnglePublicationHistogram[uncertaintyRun, 25]];
+\end{verbatim}
+
 \section{How to reproduce the numerical check}
 
 In Mathematica, load the implementation with
@@ -655,6 +814,70 @@ For window studies one can scan
 \begin{verbatim}
 MixingAngleTable[{8, 12, 1}, {50, 60, 5}, "total"]
 OPEConvergenceDataset[{8, 12, 1}, {50, 60, 5}]
+uncertaintyRun = MonteCarloMixingAngleUncertainty[50, $BcMixingDefaultUncertaintyRanges,
+  "total", "IncludeG3" -> False, "Seed" -> 1234]
+uncertaintyRun["Summary"]
+\end{verbatim}
+
+\section{Auxiliary-parameter stability plots}
+
+As a comparison with the vector \(B_c^*\) analysis of Wang, we also consider
+the auxiliary window
+\begin{equation}
+  M^2\in[7.0,9.0]~\mathrm{GeV}^2,
+  \qquad
+  s_0=(54\pm1)~\mathrm{GeV}^2.
+\end{equation}
+The Mathematica implementation stores this as
+\begin{verbatim}
+$BcMixingWangWindow
+\end{verbatim}
+and produces publication-style stability plots with
+\begin{verbatim}
+stabilityOrder = "pertG2";
+
+m2Stability = MixingAngleStabilityM2PublicationPlot[
+  $BcMixingWangWindow["M2Range"],
+  $BcMixingWangWindow["s0Values"],
+  stabilityOrder,
+  $BcMixingDefaultParameters,
+  "NPoints" -> 25,
+  "YHalfWidth" -> 1.0
+];
+
+s0Stability = MixingAngleStabilityS0PublicationPlot[
+  $BcMixingWangWindow["s0Range"],
+  $BcMixingWangWindow["M2Values"],
+  stabilityOrder,
+  $BcMixingDefaultParameters,
+  "NPoints" -> 25,
+  "YHalfWidth" -> 1.0
+];
+\end{verbatim}
+The option \texttt{"YHalfWidth" -> 1.0} prevents the vertical axis from being
+over-zoomed; it enforces at least a \(\pm1^\circ\) display window around the
+calculated angles.  This is useful when the goal is to demonstrate stability
+with respect to the auxiliary parameters, not to magnify tiny numerical
+variations.
+For publication labels the plotting functions try to use the Mathematica
+package MaTeX automatically,
+\begin{verbatim}
+"UseMaTeX" -> Automatic
+\end{verbatim}
+so that the axes and legends are rendered as \(M^2(\mathrm{GeV}^2)\),
+\(s_0(\mathrm{GeV}^2)\), \(\theta^\circ\), and entries such as
+\(s_0=54\,\mathrm{GeV}^2\).  If MaTeX is not installed, the code falls back to
+ordinary Mathematica labels with a degree symbol.  The fallback can be forced
+with \texttt{"UseMaTeX" -> False}.
+
+The plots and their underlying data can be exported with
+\begin{verbatim}
+Export["BcMixingThetaVsM2_WangWindow.pdf", m2Stability["Plot"]];
+Export["BcMixingThetaVsS0_WangWindow.pdf", s0Stability["Plot"]];
+ExportStabilityDataCSV[m2Stability["Data"],
+  "BcMixingThetaVsM2_WangWindow.csv", "M2"];
+ExportStabilityDataCSV[s0Stability["Data"],
+  "BcMixingThetaVsS0_WangWindow.csv", "s0"];
 \end{verbatim}
 
 \section{Checklist for independent verification}

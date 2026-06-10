@@ -42,6 +42,15 @@
       perturbative moments are rescaled as
         Pi_pert^ij -> (1 + alpha_s K_ij/Pi) Pi_pert^ij.
 
+    Uncertainty analysis:
+      Monte Carlo helpers sample mb, mc, condensates, M2 and s0 from
+      configurable ranges, compute theta for each accepted point and fit the
+      resulting angle distribution with a Gaussian summary.  The Monte Carlo
+      switch $BcMixingMonteCarloIncludeG3 controls whether a requested "total"
+      scan includes the slow G3 direct-Borel contribution.  It is False by
+      default for fast uncertainty scans, so "total" is evaluated as "pertG2"
+      unless "IncludeG3" -> True is supplied.
+
     Notes:
       1. The tensor current contains the explicit current factor
          i sigma_{mu alpha} p^alpha/(m_b + m_c) gamma_5.  The denominator
@@ -114,6 +123,17 @@ $BcMixingDefaultParameters = <|
   "s0" -> 55.0
 |>;
 
+$BcMixingDefaultUncertaintyRanges = <|
+  "mb" -> {4.16, 4.21},
+  "mc" -> {1.25, 1.29},
+  "G2" -> {4 Pi^2 0.006, 4 Pi^2 0.018},
+  "G3" -> {0.28, 0.86},
+  "M2" -> {8.0, 12.0},
+  "s0" -> {50.0, 60.0}
+|>;
+
+$BcMixingMonteCarloIncludeG3 = False;
+
 $Assumptions =
   Element[{mb, mc, M2, s0, s, G2, G3, alphaS}, Reals] &&
   mb > 0 && mc > 0 && M2 > 0 && s0 > (mb + mc)^2 &&
@@ -148,7 +168,9 @@ CheckEnvironment[] := <|
   "TensorCurrentScale" -> TensorCurrentScale[],
   "Nc" -> $BcMixingNc,
   "Threshold" -> BcThreshold[],
-  "DefaultParameters" -> $BcMixingDefaultParameters
+  "DefaultParameters" -> $BcMixingDefaultParameters,
+  "DefaultUncertaintyRanges" -> $BcMixingDefaultUncertaintyRanges,
+  "MonteCarloIncludeG3" -> $BcMixingMonteCarloIncludeG3
 |>;
 
 (* ---------------------------------------------------------------------- *)
@@ -1147,6 +1169,448 @@ KFactorSensitivityEnvelope[args___] := Module[
 ];
 
 (* ---------------------------------------------------------------------- *)
+(* Monte Carlo uncertainty analysis                                        *)
+(* ---------------------------------------------------------------------- *)
+
+BcMixingMomentum::badrange =
+  "Uncertainty range for `1` is invalid: `2`. Use a fixed number or {min,max}.";
+BcMixingMomentum::mcaccept =
+  "Could not draw a physical Monte Carlo point after `1` attempts. Last point was `2`.";
+
+NormalizeUncertaintyRanges[ranges_: <||>] := Which[
+  AssociationQ[ranges],
+    Join[$BcMixingDefaultUncertaintyRanges, ranges],
+  ListQ[ranges],
+    Join[$BcMixingDefaultUncertaintyRanges, Association[ranges]],
+  True,
+    Message[BcMixingMomentum::badrange, "ranges", ranges];
+    $Failed
+];
+
+RandomRangeValue[name_, value_?NumericQ] := N[value];
+
+RandomRangeValue[name_, range : {_?NumericQ, _?NumericQ}] := Module[
+  {min = N[range[[1]]], max = N[range[[2]]]},
+  If[min > max,
+    Message[BcMixingMomentum::badrange, name, range];
+    Return[$Failed]
+  ];
+  RandomReal[{min, max}]
+];
+
+RandomRangeValue[name_, value_] := (
+  Message[BcMixingMomentum::badrange, name, value];
+  $Failed
+);
+
+RandomParameterPoint[ranges_: <||>] := Module[
+  {merged = NormalizeUncertaintyRanges[ranges], sampled},
+  If[merged === $Failed, Return[$Failed]];
+  sampled = Association @ KeyValueMap[#1 -> RandomRangeValue[#1, #2] &, merged];
+  If[MemberQ[Values[sampled], $Failed], $Failed, sampled]
+];
+
+ValidParameterPointQ[point_Association] := Module[
+  {vals, mbv, mcv, g2v, g3v, m2v, s0v},
+  vals = Lookup[point, {"mb", "mc", "G2", "G3", "M2", "s0"}, Missing["KeyAbsent"]];
+  If[! VectorQ[vals, NumericQ], Return[False]];
+  {mbv, mcv, g2v, g3v, m2v, s0v} = N[vals];
+  mbv > 0 && mcv > 0 && g2v >= 0 && g3v >= 0 && m2v > 0 &&
+    s0v > (mbv + mcv)^2
+];
+
+ValidParameterPointQ[_] := False;
+
+RandomAcceptedParameterPoint[ranges_: <||>] :=
+  RandomAcceptedParameterPoint[ranges, 1000];
+
+RandomAcceptedParameterPoint[ranges_, maxAttempts_Integer?Positive] := Module[
+  {point = $Failed, last = Missing["NoDraw"], attempts = 0, found = False},
+  While[attempts < maxAttempts && ! TrueQ[found],
+    attempts++;
+    point = RandomParameterPoint[ranges];
+    last = point;
+    found = AssociationQ[point] && ValidParameterPointQ[point];
+  ];
+  If[TrueQ[found], Return[point]];
+  Message[BcMixingMomentum::mcaccept, maxAttempts, last];
+  $Failed
+];
+
+MonteCarloParameterRecord[point_Association] :=
+  Association @ KeyValueMap[
+    #1 -> N[#2] &,
+    KeyTake[point, {"mb", "mc", "G2", "G3", "M2", "s0"}]
+  ];
+
+RealMonteCarloNumberQ[value_] :=
+  NumericQ[value] && TrueQ[Chop[Im[N[value]]] == 0];
+
+RealMonteCarloNumber[value_] := Re[N[Chop[value]]];
+
+MonteCarloMixingAngleValues[result_Association] /; KeyExistsQ[result, "Samples"] :=
+  MonteCarloMixingAngleValues[result["Samples"]];
+
+MonteCarloMixingAngleValues[samples_List] :=
+  RealMonteCarloNumber /@ Select[Lookup[samples, "ThetaDeg", {}], RealMonteCarloNumberQ];
+
+MonteCarloIncludeG3Q[Automatic] :=
+  TrueQ[$BcMixingMonteCarloIncludeG3];
+
+MonteCarloIncludeG3Q[value_] :=
+  TrueQ[value];
+
+MonteCarloEvaluationOrder[order_String, includeG3_: Automatic] := Module[
+  {ord = ValidateOrder[order], useG3 = MonteCarloIncludeG3Q[includeG3]},
+  If[ord === "total" && ! TrueQ[useG3],
+    "pertG2",
+    ord
+  ]
+];
+
+Options[MonteCarloMixingAngleSamples] = Join[
+  Options[NumericBorelPi],
+  {
+    "Seed" -> Automatic,
+    "MaxAttempts" -> 1000,
+    "Progress" -> False,
+    "IncludeG3" -> Automatic
+  }
+];
+
+MonteCarloMixingAngleSamples[
+  n_Integer?Positive,
+  order_String,
+  opts : OptionsPattern[]
+] :=
+  MonteCarloMixingAngleSamples[n, <||>, order, opts];
+
+MonteCarloMixingAngleSamples[
+  n_Integer?Positive,
+  ranges_: <||>,
+  order_String : "total",
+  opts : OptionsPattern[]
+] := Module[
+  {merged = NormalizeUncertaintyRanges[ranges], seed = OptionValue["Seed"],
+   maxAttempts = OptionValue["MaxAttempts"], progress = OptionValue["Progress"],
+   includeG3 = OptionValue["IncludeG3"], evalOrder, useG3, numericOpts,
+   printEvery, point, theta},
+  evalOrder = MonteCarloEvaluationOrder[order, includeG3];
+  useG3 = MonteCarloIncludeG3Q[includeG3];
+  If[merged === $Failed, Return[$Failed]];
+  If[seed =!= Automatic, SeedRandom[seed]];
+  numericOpts = FilterRules[{opts}, Options[NumericBorelPi]];
+  printEvery = Max[1, Floor[n/10]];
+  DeleteCases[
+    Table[
+      If[TrueQ[progress] && Mod[i, printEvery] == 0,
+        Print["Monte Carlo sample ", i, "/", n]
+      ];
+      point = RandomAcceptedParameterPoint[merged, maxAttempts];
+      If[point === $Failed, Return[$Failed]];
+      theta = Quiet[
+        Check[
+          NumericMixingAngleDegrees[
+            point["M2"],
+            point["s0"],
+            evalOrder,
+            point,
+            Sequence @@ numericOpts
+          ],
+          $Failed
+        ]
+      ];
+      If[RealMonteCarloNumberQ[theta],
+        Join[
+          <|
+            "Index" -> i,
+            "RequestedOrder" -> order,
+            "Order" -> evalOrder,
+            "IncludeG3" -> useG3
+          |>,
+          MonteCarloParameterRecord[point],
+          <|
+            "Threshold" -> N[(point["mb"] + point["mc"])^2],
+            "ThetaDeg" -> RealMonteCarloNumber[theta]
+          |>
+        ],
+        $Failed
+      ],
+      {i, n}
+    ],
+    $Failed
+  ]
+];
+
+MonteCarloMixingAngleGaussianSummary[result_Association] /; KeyExistsQ[result, "Samples"] :=
+  MonteCarloMixingAngleGaussianSummary[result["Samples"]];
+
+MonteCarloMixingAngleGaussianSummary[samples_List] := Module[
+  {values = MonteCarloMixingAngleValues[samples], count, mu, sigmaMLE,
+   sigmaSample, q16, q50, q84},
+  count = Length[values];
+  If[count == 0,
+    Return[
+      <|
+        "Count" -> 0,
+        "MeanDeg" -> Missing["NoSamples"],
+        "GaussianSigmaDeg" -> Missing["NoSamples"]
+      |>
+    ]
+  ];
+  mu = Mean[values];
+  sigmaMLE = Sqrt[Mean[(values - mu)^2]];
+  sigmaSample = If[count > 1, StandardDeviation[values], 0.0];
+  {q16, q50, q84} = Quantile[values, {0.16, 0.50, 0.84}];
+  <|
+    "Count" -> count,
+    "MeanDeg" -> N[mu],
+    "GaussianSigmaDeg" -> N[sigmaMLE],
+    "SampleSigmaDeg" -> N[sigmaSample],
+    "MedianDeg" -> N[q50],
+    "Quantile16Deg" -> N[q16],
+    "Quantile84Deg" -> N[q84],
+    "MinDeg" -> N[Min[values]],
+    "MaxDeg" -> N[Max[values]],
+    "GaussianFit" -> NormalDistribution[N[mu], N[sigmaMLE]]
+  |>
+];
+
+Options[MonteCarloMixingAngleUncertainty] = Options[MonteCarloMixingAngleSamples];
+
+MonteCarloMixingAngleUncertainty[
+  n_Integer?Positive,
+  order_String,
+  opts : OptionsPattern[]
+] :=
+  MonteCarloMixingAngleUncertainty[n, <||>, order, opts];
+
+MonteCarloMixingAngleUncertainty[
+  n_Integer?Positive,
+  ranges_: <||>,
+  order_String : "total",
+  opts : OptionsPattern[]
+] := Module[
+  {merged = NormalizeUncertaintyRanges[ranges], samples,
+   includeG3 = OptionValue["IncludeG3"], evalOrder, useG3},
+  If[merged === $Failed, Return[$Failed]];
+  evalOrder = MonteCarloEvaluationOrder[order, includeG3];
+  useG3 = MonteCarloIncludeG3Q[includeG3];
+  samples = MonteCarloMixingAngleSamples[n, merged, order, opts];
+  If[samples === $Failed, Return[$Failed]];
+  <|
+    "RequestedOrder" -> order,
+    "Order" -> evalOrder,
+    "IncludeG3" -> useG3,
+    "RequestedSamples" -> n,
+    "AcceptedSamples" -> Length[samples],
+    "Ranges" -> merged,
+    "Samples" -> samples,
+    "Summary" -> MonteCarloMixingAngleGaussianSummary[samples]
+  |>
+];
+
+MonteCarloMixingAngleDataset[result_Association] /; KeyExistsQ[result, "Samples"] :=
+  Dataset[result["Samples"]];
+
+MonteCarloMixingAngleDataset[samples_List] :=
+  Dataset[samples];
+
+MonteCarloMixingAngleHistogram[result_, bins_: Automatic] := Module[
+  {values = MonteCarloMixingAngleValues[result], summary, mu, sigma, x, xrange, hist, fit},
+  If[values === {}, Return[$Failed]];
+  summary = MonteCarloMixingAngleGaussianSummary[result];
+  mu = summary["MeanDeg"];
+  sigma = summary["GaussianSigmaDeg"];
+  xrange = MinMax[values];
+  If[xrange[[1]] == xrange[[2]], xrange = xrange + {-0.5, 0.5}];
+  hist = Histogram[
+    values,
+    bins,
+    "PDF",
+    Frame -> True,
+    FrameLabel -> {"theta [deg]", "probability density"},
+    PlotLabel -> Row[{
+      "B_c mixing-angle Monte Carlo: mean = ",
+      NumberForm[mu, {6, 3}],
+      " deg, sigma = ",
+      NumberForm[sigma, {6, 3}],
+      " deg"
+    }],
+    ChartStyle -> ColorData[97][1]
+  ];
+  If[! NumericQ[sigma] || sigma <= 0,
+    hist,
+    fit = Plot[
+      PDF[NormalDistribution[mu, sigma], x],
+      {x, xrange[[1]], xrange[[2]]},
+      PlotStyle -> {Red, Thick}
+    ];
+    Show[hist, fit, PlotRange -> All]
+  ]
+];
+
+MonteCarloCSVValue[value_?NumericQ] := N[value];
+
+MonteCarloCSVValue[value_String] := value;
+
+MonteCarloCSVValue[value_] := ToString[value, InputForm];
+
+MonteCarloSampleTable[result_Association] /; KeyExistsQ[result, "Samples"] :=
+  MonteCarloSampleTable[result["Samples"]];
+
+MonteCarloSampleTable[samples_List] := Module[
+  {keys},
+  If[samples === {}, Return[{}]];
+  keys = Union[Flatten[Keys /@ samples]];
+  Prepend[
+    MonteCarloCSVValue /@ Lookup[#, keys, ""] & /@ samples,
+    keys
+  ]
+];
+
+MonteCarloCSVField[value_?NumericQ] := ToString[N[value], InputForm];
+
+MonteCarloCSVField[value_String] := Module[
+  {text = value},
+  If[StringContainsQ[text, {",", "\"", "\n", "\r"}],
+    "\"" <> StringReplace[text, "\"" -> "\"\""] <> "\"",
+    text
+  ]
+];
+
+MonteCarloCSVField[value_] :=
+  MonteCarloCSVField[ToString[MonteCarloCSVValue[value], InputForm]];
+
+MonteCarloCSVString[table_List] :=
+  StringRiffle[
+    StringRiffle[MonteCarloCSVField /@ #, ","] & /@ table,
+    "\n"
+  ] <> "\n";
+
+WriteMonteCarloCSV[file_String, table_List] := Module[
+  {stream},
+  stream = OpenWrite[file, CharacterEncoding -> "UTF8"];
+  WriteString[stream, MonteCarloCSVString[table]];
+  Close[stream];
+  file
+];
+
+ExportMonteCarloMixingAngleSamples[
+  result_,
+  file_String : "BcMixingMonteCarloSamples.csv"
+] :=
+  WriteMonteCarloCSV[file, MonteCarloSampleTable[result]];
+
+ExportMonteCarloMixingAngleSummary[
+  result_Association,
+  file_String : "BcMixingMonteCarloSummary.csv"
+] := Module[
+  {summary = Lookup[result, "Summary", result]},
+  WriteMonteCarloCSV[
+    file,
+    Prepend[
+      KeyValueMap[{#1, ToString[#2, InputForm]} &, summary],
+      {"Quantity", "Value"}
+    ]
+  ]
+];
+
+Options[MonteCarloMixingAnglePublicationHistogram] = {
+  "HistogramColor" -> RGBColor[0.22, 0.39, 0.62],
+  "FitColor" -> RGBColor[0.76, 0.12, 0.10],
+  "MeanColor" -> GrayLevel[0.15],
+  "ShowMeanLine" -> True,
+  "UseMaTeX" -> Automatic,
+  "MaTeXMagnification" -> 1.1,
+  ImageSize -> 540,
+  LabelStyle -> Directive[Black, 14, FontFamily -> "Times"],
+  BaseStyle -> {FontFamily -> "Times"},
+  FrameLabel -> Automatic,
+  PlotRange -> All
+};
+
+MonteCarloMixingAnglePublicationHistogram[
+  result_,
+  bins_: Automatic,
+  opts : OptionsPattern[]
+] := Module[
+  {values = MonteCarloMixingAngleValues[result], summary, mu, sigma, x,
+   xrange, histColor = OptionValue["HistogramColor"],
+   fitColor = OptionValue["FitColor"], meanColor = OptionValue["MeanColor"],
+   hist, fit, layers, shown, legend, frameLabel},
+  If[values === {}, Return[$Failed]];
+  summary = MonteCarloMixingAngleGaussianSummary[result];
+  mu = summary["MeanDeg"];
+  sigma = summary["GaussianSigmaDeg"];
+  xrange = MinMax[values];
+  If[xrange[[1]] == xrange[[2]], xrange = xrange + {-0.5, 0.5}];
+  frameLabel = Replace[
+    OptionValue[FrameLabel],
+    Automatic -> {
+      BcMixingMaTeXLabel[
+        "\\theta^\\circ",
+        Superscript["\[Theta]", "\[Degree]"],
+        OptionValue["UseMaTeX"],
+        OptionValue["MaTeXMagnification"]
+      ],
+      "Probability density"
+    }
+  ];
+  hist = Histogram[
+    values,
+    bins,
+    "PDF",
+    Frame -> True,
+    Axes -> False,
+    FrameLabel -> frameLabel,
+    LabelStyle -> OptionValue[LabelStyle],
+    BaseStyle -> OptionValue[BaseStyle],
+    ImageSize -> OptionValue[ImageSize],
+    ImagePadding -> {{75, 20}, {60, 20}},
+    PlotLabel -> None,
+    PlotRange -> OptionValue[PlotRange],
+    ChartStyle -> Directive[histColor, Opacity[0.72], EdgeForm[Directive[GrayLevel[0.25], Thin]]]
+  ];
+  fit = If[NumericQ[sigma] && sigma > 0,
+    Plot[
+      PDF[NormalDistribution[mu, sigma], x],
+      {x, xrange[[1]], xrange[[2]]},
+      PlotStyle -> Directive[fitColor, Thick],
+      PlotRange -> OptionValue[PlotRange]
+    ],
+    Nothing
+  ];
+  layers = DeleteCases[{hist, fit}, Nothing];
+  shown = Show[
+    Sequence @@ layers,
+    PlotRange -> OptionValue[PlotRange],
+    GridLines -> If[TrueQ[OptionValue["ShowMeanLine"]], {{mu}, None}, None],
+    GridLinesStyle -> Directive[meanColor, Dashed, Thick]
+  ];
+  legend = Column[
+    {
+      SwatchLegend[{histColor}, {"Monte Carlo samples"}],
+      If[NumericQ[sigma] && sigma > 0,
+        LineLegend[
+          {Directive[fitColor, Thick], Directive[meanColor, Dashed, Thick]},
+          {
+            Row[{"Gaussian fit: \[Mu] = ", NumberForm[mu, {6, 3}], "\[Degree]"}],
+            Row[{"Width: \[Sigma] = ", NumberForm[sigma, {5, 3}], "\[Degree]"}]
+          }
+        ],
+        LineLegend[
+          {Directive[meanColor, Dashed, Thick]},
+          {Row[{"Mean: ", NumberForm[mu, {6, 3}], "\[Degree]"}]}
+        ]
+      ]
+    },
+    Spacings -> 0.25
+  ];
+  Legended[shown, Placed[legend, Right]]
+];
+
+(* ---------------------------------------------------------------------- *)
 (* Borel-window and continuum-threshold scan helpers                       *)
 (* ---------------------------------------------------------------------- *)
 
@@ -1398,5 +1862,323 @@ MixingAngleContourPlot[m2Range : {_?NumericQ, _?NumericQ}, s0Range : {_?NumericQ
       PlotLegends -> Automatic
     ]
   ];
+
+(* ---------------------------------------------------------------------- *)
+(* Publication-quality auxiliary-parameter stability plots                 *)
+(* ---------------------------------------------------------------------- *)
+
+$BcMixingWangWindow = <|
+  "M2Range" -> {7.0, 9.0},
+  "M2Values" -> {7.0, 8.0, 9.0},
+  "s0Central" -> 54.0,
+  "s0Range" -> {53.0, 55.0},
+  "s0Values" -> {53.0, 54.0, 55.0}
+|>;
+
+PublicationThetaYRange[values_List, minHalfWidth_: 1.0, padFraction_: 0.20] := Module[
+  {finite = Select[Flatten[N[values]], NumericQ], min, max, center, halfWidth},
+  If[finite === {}, Return[All]];
+  {min, max} = MinMax[finite];
+  center = Mean[{min, max}];
+  halfWidth = Max[minHalfWidth, (max - min) (1/2 + padFraction)];
+  {center - halfWidth, center + halfWidth}
+];
+
+PublicationPlotStyles[n_Integer?Positive] :=
+  Directive[AbsoluteThickness[2.2], #] & /@ ColorData[97, "ColorList"][[1 ;; n]];
+
+MixingAngleM2StabilityData[
+  m2Range : {_?NumericQ, _?NumericQ},
+  s0Values_List,
+  order_String : "pertG2",
+  params_: $BcMixingDefaultParameters,
+  nPoints_: 25,
+  opts : OptionsPattern[NumericBorelPi]
+] := Module[
+  {n = Max[2, Round[nPoints]], m2Values, numericOpts},
+  m2Values = N[Subdivide[m2Range[[1]], m2Range[[2]], n - 1]];
+  numericOpts = FilterRules[{opts}, Options[NumericBorelPi]];
+  Association[
+    Table[
+      s0v -> Table[
+        {
+          m2v,
+          NumericMixingAngleDegrees[m2v, s0v, order, params, Sequence @@ numericOpts]
+        },
+        {m2v, m2Values}
+      ],
+      {s0v, N[s0Values]}
+    ]
+  ]
+];
+
+MixingAngleS0StabilityData[
+  s0Range : {_?NumericQ, _?NumericQ},
+  m2Values_List,
+  order_String : "pertG2",
+  params_: $BcMixingDefaultParameters,
+  nPoints_: 25,
+  opts : OptionsPattern[NumericBorelPi]
+] := Module[
+  {n = Max[2, Round[nPoints]], s0Values, numericOpts},
+  s0Values = N[Subdivide[s0Range[[1]], s0Range[[2]], n - 1]];
+  numericOpts = FilterRules[{opts}, Options[NumericBorelPi]];
+  Association[
+    Table[
+      m2v -> Table[
+        {
+          s0v,
+          NumericMixingAngleDegrees[m2v, s0v, order, params, Sequence @@ numericOpts]
+        },
+        {s0v, s0Values}
+      ],
+      {m2v, N[m2Values]}
+    ]
+  ]
+];
+
+StabilityDataCSVTable[data_Association, xLabel_String : "x"] := Module[
+  {rows},
+  rows = Flatten[
+    KeyValueMap[
+      Function[{fixed, points},
+        ({fixed, #[[1]], #[[2]]} & /@ points)
+      ],
+      data
+    ],
+    1
+  ];
+  Prepend[rows, {"FixedParameter", xLabel, "ThetaDeg"}]
+];
+
+ExportStabilityDataCSV[data_Association, file_String, xLabel_String : "x"] :=
+  WriteMonteCarloCSV[file, StabilityDataCSVTable[data, xLabel]];
+
+Clear[
+  BcMixingMaTeXAvailableQ,
+  BcMixingMaTeXLabel,
+  BcMixingLegendNumber,
+  BcMixingLegendLabel
+];
+
+BcMixingMaTeXAvailableQ[] := BcMixingMaTeXAvailableQ[] = Quiet[
+  Check[
+    Needs["MaTeX`"];
+    NameQ["MaTeX`MaTeX"],
+    False
+  ]
+];
+
+BcMixingMaTeXLabel[
+  tex_String,
+  fallback_,
+  useMaTeX_: Automatic,
+  magnification_: 1.1
+] := Module[
+  {enabled = Replace[useMaTeX, Automatic :> BcMixingMaTeXAvailableQ[]]},
+  If[
+    TrueQ[enabled] && BcMixingMaTeXAvailableQ[],
+    Quiet[
+      Check[
+        ToExpression["MaTeX`MaTeX"][tex, Magnification -> magnification],
+        fallback
+      ]
+    ],
+    fallback
+  ]
+];
+
+BcMixingLegendNumber[value_?NumericQ] := If[
+  Chop[value - Round[value]] == 0,
+  ToString[Round[value]],
+  ToString[
+    NumberForm[
+      value,
+      {8, 3},
+      NumberPadding -> {"", ""},
+      NumberPoint -> ".",
+      ExponentFunction -> (Null &)
+    ]
+  ]
+];
+
+BcMixingLegendLabel[
+  symbolTeX_String,
+  fallbackSymbol_,
+  value_?NumericQ,
+  useMaTeX_: Automatic,
+  magnification_: 1.0
+] := BcMixingMaTeXLabel[
+  StringTemplate["`` = ``\\,\\mathrm{GeV}^2"][symbolTeX, BcMixingLegendNumber[value]],
+  Row[{fallbackSymbol, " = ", BcMixingLegendNumber[value], " ", Superscript["GeV", 2]}],
+  useMaTeX,
+  magnification
+];
+
+Options[MixingAngleStabilityM2PublicationPlot] = Join[
+  Options[NumericBorelPi],
+  {
+    "NPoints" -> 25,
+    "YHalfWidth" -> 1.0,
+    "YPadFraction" -> 0.20,
+    "LegendLabel" -> Subscript["s", 0],
+    "LegendLabelTeX" -> "s_0",
+    "UseMaTeX" -> Automatic,
+    "MaTeXMagnification" -> 1.1,
+    ImageSize -> 540,
+    LabelStyle -> Directive[Black, 14, FontFamily -> "Times"],
+    BaseStyle -> {FontFamily -> "Times"},
+    FrameLabel -> Automatic,
+    PlotRange -> Automatic
+  }
+];
+
+MixingAngleStabilityM2PublicationPlot[
+  m2Range : {_?NumericQ, _?NumericQ} : $BcMixingWangWindow["M2Range"],
+  s0Values_List : $BcMixingWangWindow["s0Values"],
+  order_String : "pertG2",
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] := Module[
+  {nPoints = OptionValue["NPoints"], data, yRange, plotRange, styles, labels, frameLabel},
+  nPoints = Max[2, Round[nPoints]];
+  data = MixingAngleM2StabilityData[
+    m2Range, s0Values, order, params, nPoints,
+    Sequence @@ FilterRules[{opts}, Options[NumericBorelPi]]
+  ];
+  yRange = PublicationThetaYRange[
+    Values[data][[All, All, 2]],
+    OptionValue["YHalfWidth"],
+    OptionValue["YPadFraction"]
+  ];
+  plotRange = Replace[OptionValue[PlotRange], Automatic -> {m2Range, yRange}];
+  styles = PublicationPlotStyles[Length[data]];
+  labels = BcMixingLegendLabel[
+    OptionValue["LegendLabelTeX"],
+    OptionValue["LegendLabel"],
+    #,
+    OptionValue["UseMaTeX"],
+    OptionValue["MaTeXMagnification"]
+  ] & /@ Keys[data];
+  frameLabel = Replace[
+    OptionValue[FrameLabel],
+    Automatic -> {
+      BcMixingMaTeXLabel[
+        "M^2\\,(\\mathrm{GeV}^2)",
+        Row[{Superscript["M", 2], " (", Superscript["GeV", 2], ")"}],
+        OptionValue["UseMaTeX"],
+        OptionValue["MaTeXMagnification"]
+      ],
+      BcMixingMaTeXLabel[
+        "\\theta^\\circ",
+        Superscript["\[Theta]", "\[Degree]"],
+        OptionValue["UseMaTeX"],
+        OptionValue["MaTeXMagnification"]
+      ]
+    }
+  ];
+  <|
+    "Data" -> data,
+    "Plot" -> ListLinePlot[
+      Values[data],
+      Frame -> True,
+      Axes -> False,
+      FrameLabel -> frameLabel,
+      LabelStyle -> OptionValue[LabelStyle],
+      BaseStyle -> OptionValue[BaseStyle],
+      ImageSize -> OptionValue[ImageSize],
+      ImagePadding -> {{75, 20}, {60, 20}},
+      PlotStyle -> styles,
+      PlotMarkers -> Automatic,
+      PlotRange -> plotRange,
+      GridLines -> Automatic,
+      GridLinesStyle -> Directive[GrayLevel[0.85], Dashed],
+      PlotLegends -> Placed[LineLegend[styles, labels, LegendMarkerSize -> 18], Right]
+    ]
+  |>
+];
+
+Options[MixingAngleStabilityS0PublicationPlot] = Join[
+  Options[NumericBorelPi],
+  {
+    "NPoints" -> 25,
+    "YHalfWidth" -> 1.0,
+    "YPadFraction" -> 0.20,
+    "LegendLabel" -> Superscript["M", 2],
+    "LegendLabelTeX" -> "M^2",
+    "UseMaTeX" -> Automatic,
+    "MaTeXMagnification" -> 1.1,
+    ImageSize -> 540,
+    LabelStyle -> Directive[Black, 14, FontFamily -> "Times"],
+    BaseStyle -> {FontFamily -> "Times"},
+    FrameLabel -> Automatic,
+    PlotRange -> Automatic
+  }
+];
+
+MixingAngleStabilityS0PublicationPlot[
+  s0Range : {_?NumericQ, _?NumericQ} : $BcMixingWangWindow["s0Range"],
+  m2Values_List : $BcMixingWangWindow["M2Values"],
+  order_String : "pertG2",
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] := Module[
+  {nPoints = OptionValue["NPoints"], data, yRange, plotRange, styles, labels, frameLabel},
+  nPoints = Max[2, Round[nPoints]];
+  data = MixingAngleS0StabilityData[
+    s0Range, m2Values, order, params, nPoints,
+    Sequence @@ FilterRules[{opts}, Options[NumericBorelPi]]
+  ];
+  yRange = PublicationThetaYRange[
+    Values[data][[All, All, 2]],
+    OptionValue["YHalfWidth"],
+    OptionValue["YPadFraction"]
+  ];
+  plotRange = Replace[OptionValue[PlotRange], Automatic -> {s0Range, yRange}];
+  styles = PublicationPlotStyles[Length[data]];
+  labels = BcMixingLegendLabel[
+    OptionValue["LegendLabelTeX"],
+    OptionValue["LegendLabel"],
+    #,
+    OptionValue["UseMaTeX"],
+    OptionValue["MaTeXMagnification"]
+  ] & /@ Keys[data];
+  frameLabel = Replace[
+    OptionValue[FrameLabel],
+    Automatic -> {
+      BcMixingMaTeXLabel[
+        "s_0\\,(\\mathrm{GeV}^2)",
+        Row[{Subscript["s", 0], " (", Superscript["GeV", 2], ")"}],
+        OptionValue["UseMaTeX"],
+        OptionValue["MaTeXMagnification"]
+      ],
+      BcMixingMaTeXLabel[
+        "\\theta^\\circ",
+        Superscript["\[Theta]", "\[Degree]"],
+        OptionValue["UseMaTeX"],
+        OptionValue["MaTeXMagnification"]
+      ]
+    }
+  ];
+  <|
+    "Data" -> data,
+    "Plot" -> ListLinePlot[
+      Values[data],
+      Frame -> True,
+      Axes -> False,
+      FrameLabel -> frameLabel,
+      LabelStyle -> OptionValue[LabelStyle],
+      BaseStyle -> OptionValue[BaseStyle],
+      ImageSize -> OptionValue[ImageSize],
+      ImagePadding -> {{75, 20}, {60, 20}},
+      PlotStyle -> styles,
+      PlotMarkers -> Automatic,
+      PlotRange -> plotRange,
+      GridLines -> Automatic,
+      GridLinesStyle -> Directive[GrayLevel[0.85], Dashed],
+      PlotLegends -> Placed[LineLegend[styles, labels, LegendMarkerSize -> 18], Right]
+    ]
+  |>
+];
 
 Print["Loaded BcMixingMomentum.wl.  Run CheckEnvironment[] for setup information."];

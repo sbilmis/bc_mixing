@@ -232,6 +232,282 @@ returns approximately
 
 for \(M^2=\{8,10,12\}\) and \(s_0=\{50,55,60\}\).
 
+## Wang-Window Stability Plots
+
+Wang's \(B_c^*\) sum-rule analysis uses the auxiliary window
+
+\[
+M^2 = 7.0\text{--}9.0~{\rm GeV}^2,\qquad
+s_0 = 54\pm1~{\rm GeV}^2.
+\]
+
+This is useful as a comparison/stability check for the mixing-angle analysis.
+The package defines:
+
+```wl
+$BcMixingWangWindow
+```
+
+with
+
+```wl
+<|
+  "M2Range" -> {7.0, 9.0},
+  "M2Values" -> {7.0, 8.0, 9.0},
+  "s0Central" -> 54.0,
+  "s0Range" -> {53.0, 55.0},
+  "s0Values" -> {53.0, 54.0, 55.0}
+|>
+```
+
+Publication-quality stability plots can be generated with:
+
+```wl
+stabilityOrder = "pertG2";
+
+m2Stability = MixingAngleStabilityM2PublicationPlot[
+  $BcMixingWangWindow["M2Range"],
+  $BcMixingWangWindow["s0Values"],
+  stabilityOrder,
+  $BcMixingDefaultParameters,
+  "NPoints" -> 25,
+  "YHalfWidth" -> 1.0
+];
+
+s0Stability = MixingAngleStabilityS0PublicationPlot[
+  $BcMixingWangWindow["s0Range"],
+  $BcMixingWangWindow["M2Values"],
+  stabilityOrder,
+  $BcMixingDefaultParameters,
+  "NPoints" -> 25,
+  "YHalfWidth" -> 1.0
+];
+
+m2Stability["Plot"]
+s0Stability["Plot"]
+```
+
+Here `"YHalfWidth" -> 1.0` forces at least a \(\pm1^\circ\) vertical window
+around the plotted values, so the graph does not over-magnify small changes in
+\(\theta\). Increase it to `1.5` or `2.0` if you want an even calmer y-axis.
+The plot functions use MaTeX labels automatically when the MaTeX package is
+available:
+
+```wl
+"UseMaTeX" -> Automatic
+```
+
+This gives publication-style labels such as \(M^2(\mathrm{GeV}^2)\),
+\(s_0(\mathrm{GeV}^2)\), \(\theta^\circ\), and legend entries like
+\(s_0=54\,\mathrm{GeV}^2\). If MaTeX is not installed, the same functions fall
+back to ordinary Mathematica labels with the degree symbol. To force plain
+labels, use `"UseMaTeX" -> False`; to request MaTeX explicitly, use
+`"UseMaTeX" -> True`.
+
+Export figures and data with:
+
+```wl
+Export["BcMixingThetaVsM2_WangWindow.pdf", m2Stability["Plot"]];
+Export["BcMixingThetaVsS0_WangWindow.pdf", s0Stability["Plot"]];
+
+ExportStabilityDataCSV[
+  m2Stability["Data"],
+  "BcMixingThetaVsM2_WangWindow.csv",
+  "M2"
+];
+
+ExportStabilityDataCSV[
+  s0Stability["Data"],
+  "BcMixingThetaVsS0_WangWindow.csv",
+  "s0"
+];
+```
+
+## Monte Carlo Uncertainty Analysis
+
+The central values in the input table,
+
+\[
+m_b=4.18~{\rm GeV},\quad
+m_c=1.27~{\rm GeV},\quad
+\langle g_s^2G^2\rangle=4\pi^2(0.012)~{\rm GeV}^4,\quad
+\langle g_s^3G^3\rangle=0.57~{\rm GeV}^6,
+\]
+
+are not enough for the final quoted uncertainty. Their allowed ranges should
+be propagated together with the Borel-window and continuum-threshold
+variation. The script now includes a Monte Carlo layer that samples
+\(m_b\), \(m_c\), \(G^2\), \(G^3\), \(M^2\), and \(s_0\), rejects points that
+violate \(s_0>(m_b+m_c)^2\), and computes \(\theta\) for every accepted point.
+
+The current editable working ranges are:
+
+```wl
+$BcMixingDefaultUncertaintyRanges
+```
+
+which corresponds to
+
+```wl
+<|
+  "mb" -> {4.16, 4.21},
+  "mc" -> {1.25, 1.29},
+  "G2" -> {4 Pi^2 0.006, 4 Pi^2 0.018},
+  "G3" -> {0.28, 0.86},
+  "M2" -> {8.0, 12.0},
+  "s0" -> {50.0, 60.0}
+|>
+```
+
+These are placeholders for the numerical scan and should be replaced by the
+final input uncertainties used in the paper. A single number fixes a parameter
+instead of sampling it; a pair `{min,max}` samples it uniformly.
+
+In the call below, `50` is the number of random accepted Monte Carlo points.
+For a paper-level run, use `500`, `1000`, or larger after the final parameter
+ranges are fixed. The option `"Seed" -> 1234` fixes the random-number seed, so
+the same notebook cell gives the same random sample again. Change the seed, or
+set `"Seed" -> Automatic`, to generate a statistically independent sample.
+
+Example with a small test sample. The result is named `uncertaintyRun` to
+avoid confusion with the charm-quark mass key `"mc"`.
+
+```wl
+uncertaintyRun = MonteCarloMixingAngleUncertainty[
+  50,
+  <|
+    "mb" -> {4.16, 4.21},
+    "mc" -> {1.25, 1.29},
+    "G2" -> {4 Pi^2 0.006, 4 Pi^2 0.018},
+    "G3" -> {0.28, 0.86},
+    "M2" -> {8.0, 12.0},
+    "s0" -> {50.0, 60.0}
+  |>,
+  "total",
+  "IncludeG3" -> False,
+  "Seed" -> 1234,
+  "Progress" -> True
+];
+```
+
+For notebook work it is better to use one editable control block:
+
+```wl
+nSamples = 50;
+histBins = 15;
+m2Range = {8.0, 12.0};
+s0Range = {50.0, 60.0};
+
+uncertaintyRanges = Join[
+  $BcMixingDefaultUncertaintyRanges,
+  <|"M2" -> m2Range, "s0" -> s0Range|>
+];
+
+uncertaintyRun = MonteCarloMixingAngleUncertainty[
+  nSamples,
+  uncertaintyRanges,
+  "total",
+  "IncludeG3" -> False,
+  "Seed" -> 1234,
+  "Progress" -> True
+];
+```
+
+Then the only controls you normally change are `nSamples`, `histBins`,
+`m2Range`, and `s0Range`.
+
+For now the default Monte Carlo switch is
+
+```wl
+$BcMixingMonteCarloIncludeG3 = False;
+```
+
+This means a requested `"total"` uncertainty scan is evaluated as `"pertG2"`
+unless `G3` is explicitly switched on. The result records both
+`"RequestedOrder"` and the actual `"Order"` used for each point. When the
+standard single-line \(G^3\) contribution is ready to include in the long scan,
+use either
+
+```wl
+MonteCarloMixingAngleUncertainty[
+  500,
+  $BcMixingDefaultUncertaintyRanges,
+  "total",
+  "IncludeG3" -> True
+]
+```
+
+or set
+
+```wl
+$BcMixingMonteCarloIncludeG3 = True;
+```
+
+before running the notebook cells.
+
+Then inspect the result:
+
+```wl
+uncertaintyRun["Summary"]
+MonteCarloMixingAngleDataset[uncertaintyRun]
+MonteCarloMixingAngleHistogram[uncertaintyRun, histBins]
+MonteCarloMixingAnglePublicationHistogram[uncertaintyRun, histBins]
+```
+
+The summary reports the accepted sample count, mean angle, Gaussian-width
+estimate, sample standard deviation, median, \(16\%\) and \(84\%\) quantiles,
+and min/max values. For paper-level statistics, increase `50` to `500` or
+larger after the final parameter ranges and Borel window are fixed. The fast
+paper-draft uncertainty scan should use `IncludeG3 -> False`; later the same
+call can be rerun with `IncludeG3 -> True` to quantify the \(G^3\) shift.
+
+To vary only \(M^2\) and \(s_0\) while keeping the QCD inputs at their central
+values:
+
+```wl
+myRanges = Join[
+  $BcMixingDefaultUncertaintyRanges,
+  <|
+    "mb" -> 4.18,
+    "mc" -> 1.27,
+    "G2" -> 4 Pi^2 0.012,
+    "G3" -> 0.57,
+    "M2" -> {8.0, 12.0},
+    "s0" -> {50.0, 60.0}
+  |>
+];
+
+MonteCarloMixingAngleUncertainty[
+  500,
+  myRanges,
+  "total",
+  "IncludeG3" -> False
+]
+```
+
+For example, to test a narrower window, change only the last two entries:
+
+```wl
+myRanges = Join[
+  $BcMixingDefaultUncertaintyRanges,
+  <|"M2" -> {9.0, 11.0}, "s0" -> {52.0, 58.0}|>
+];
+```
+
+For publication plotting or external replotting:
+
+```wl
+pubPlot = MonteCarloMixingAnglePublicationHistogram[uncertaintyRun, 20];
+Export["BcMixingMonteCarloHistogram.pdf", pubPlot];
+
+ExportMonteCarloMixingAngleSamples[uncertaintyRun, "BcMixingMonteCarloSamples.csv"];
+ExportMonteCarloMixingAngleSummary[uncertaintyRun, "BcMixingMonteCarloSummary.csv"];
+```
+
+The current Monte Carlo does not include a real \(O(\alpha_s)\) perturbative
+uncertainty because the two-loop spectral densities have not been calculated
+yet. The separate K-factor layer below is only a sensitivity test.
+
 ## Why Momentum Space
 
 For \(B_c\), both quark lines are heavy. The OPE side is a two-mass
