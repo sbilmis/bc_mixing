@@ -1,0 +1,62 @@
+Notebook[{
+  Cell["B_c Mixing Angle: Direct Coordinate-Space Calculation", "Title"],
+  Cell["This notebook is the independent direct-coordinate perturbative workflow. It does not load the momentum-space file in the main run. Full G2/G3 direct-coordinate OPE blocks are left as explicit pending tasks.", "Text"],
+
+  Cell["Load Direct Coordinate File", "Section"],
+  Cell[BoxData["SetDirectory[NotebookDirectory[]];"], "Input"],
+  Cell[BoxData["Get[\"BcMixingCoordinateDirect.wl\"];"], "Input"],
+  Cell[BoxData["DirectEnvironment[]"], "Input"],
+
+  Cell["Run Controls", "Section"],
+  Cell[BoxData["m2Test = 8.0;\ns0Test = 54.0;\ndirectNPoints = 25;\ndirectYHalfWidth = 1.0;\ncommonThetaPlotRange = $BcDirectMomentumComparableThetaRange;\ndirectMonteCarloSamples = 50;\ndirectMonteCarloBins = 15;\ndirectExportPDF = False;"], "Input"],
+
+  Cell["Direct Delta-Support Derivation", "Section"],
+  Cell[BoxData["DirectLiteratureNote[]"], "Input"],
+  Cell[BoxData["DirectDeltaSupportNote[]"], "Input"],
+  Cell[BoxData["DirectDeltaReductionFormula[F[x], x, s] // TraditionalForm"], "Input"],
+  Cell[BoxData["DirectDeltaDerivativeExamples[] // TraditionalForm"], "Input"],
+
+  Cell["Perturbative Spectral Densities", "Section"],
+  Cell[BoxData["DirectPerturbativeSpectralDensity[\"AA\", s] // Simplify // TraditionalForm"], "Input"],
+  Cell[BoxData["DirectPerturbativeSpectralDensity[\"AB\", s] // Simplify // TraditionalForm"], "Input"],
+  Cell[BoxData["DirectPerturbativeSpectralDensity[\"BB\", s] // Simplify // TraditionalForm"], "Input"],
+
+  Cell["Central Values", "Section"],
+  Cell[BoxData["DirectOPESummary[m2Test, s0Test] // Dataset"], "Input"],
+  Cell[BoxData["DirectMixingAngleSummary[m2Test, s0Test] // Dataset"], "Input"],
+  Cell[BoxData["DirectNumericMixingAngleDegrees[m2Test, s0Test]"], "Input"],
+  Cell[BoxData["DirectPerturbativeCheck[m2Test, s0Test]"], "Input"],
+
+  Cell["Wang-Window Stability: theta versus M2", "Section"],
+  Cell[BoxData["directM2Stability = DirectM2StabilityPublicationPlot[\n  $BcDirectWangWindow[\"M2Range\"],\n  $BcDirectWangWindow[\"s0Values\"],\n  $BcDirectDefaultParameters,\n  \"NPoints\" -> directNPoints,\n  \"YHalfWidth\" -> directYHalfWidth,\n  PlotRange -> {$BcDirectWangWindow[\"M2Range\"], commonThetaPlotRange}\n];"], "Input"],
+  Cell[BoxData["directM2Stability[\"Plot\"]"], "Input"],
+  Cell[BoxData["DirectExportStabilityDataCSV[directM2Stability[\"Data\"], \"BcMixingCoordinateDirectThetaVsM2_WangWindow.csv\", \"M2\"]"], "Input"],
+
+  Cell["Wang-Window Stability: theta versus s0", "Section"],
+  Cell[BoxData["directS0Stability = DirectS0StabilityPublicationPlot[\n  $BcDirectWangWindow[\"s0Range\"],\n  $BcDirectWangWindow[\"M2Values\"],\n  $BcDirectDefaultParameters,\n  \"NPoints\" -> directNPoints,\n  \"YHalfWidth\" -> directYHalfWidth,\n  PlotRange -> {$BcDirectWangWindow[\"s0Range\"], commonThetaPlotRange}\n];"], "Input"],
+  Cell[BoxData["directS0Stability[\"Plot\"]"], "Input"],
+  Cell[BoxData["DirectExportStabilityDataCSV[directS0Stability[\"Data\"], \"BcMixingCoordinateDirectThetaVsS0_WangWindow.csv\", \"s0\"]"], "Input"],
+
+  Cell["Optional Stability PDF Export", "Section"],
+  Cell[BoxData["If[TrueQ[directExportPDF],\n  {\n    Export[\"BcMixingCoordinateDirectThetaVsM2_WangWindow.pdf\", directM2Stability[\"Plot\"]],\n    Export[\"BcMixingCoordinateDirectThetaVsS0_WangWindow.pdf\", directS0Stability[\"Plot\"]]\n  },\n  \"PDF export skipped. Set directExportPDF = True when ready.\"\n]"], "Input"],
+
+  Cell["Independent Direct Monte Carlo", "Section"],
+  Cell["This uses DirectMonteCarloMixingAngleUncertainty, not the momentum-space Monte Carlo engine.", "Text"],
+  Cell[BoxData["directUncertainty = DirectMonteCarloMixingAngleUncertainty[\n  directMonteCarloSamples,\n  $BcDirectDefaultUncertaintyRanges,\n  \"Seed\" -> 1234,\n  \"Progress\" -> True\n];"], "Input"],
+  Cell[BoxData["directUncertainty[\"Summary\"] // Dataset"], "Input"],
+  Cell[BoxData["directUncertainty[\"DirectIndependence\"]"], "Input"],
+  Cell[BoxData["DirectMonteCarloMixingAnglePublicationHistogram[directUncertainty, directMonteCarloBins]"], "Input"],
+  Cell[BoxData["DirectExportMonteCarloMixingAngleSamples[directUncertainty, \"BcMixingCoordinateDirectMonteCarloSamples.csv\"];\nDirectExportMonteCarloMixingAngleSummary[directUncertainty, \"BcMixingCoordinateDirectMonteCarloSummary.csv\"];"], "Input"],
+
+  Cell["Independent Full-OPE Status", "Section"],
+  Cell["The direct-coordinate file currently contains a perturbative direct derivation plus delta-derivative diagnostics. A paper-final direct-coordinate full OPE still requires an independent direct derivation of G2 and G3 moments.", "Text"],
+  Cell[BoxData["<|\n  \"IndependentNow\" -> \"pert\",\n  \"Pending\" -> {\"G2 direct-coordinate Borel moments\", \"G3 direct-coordinate Borel moments\", \"full-OPE Monte Carlo\"}\n|> // Dataset"], "Input"],
+
+  Cell["Optional Momentum/Coordinate Comparison", "Section"],
+  Cell["Run this section only as a cross-check. It is not part of the independent direct-coordinate output.", "Text"],
+  Cell[BoxData["(*\nGet[\"BcMixingMomentum.wl\"];\nGet[\"BcMixingCoordinate.wl\"];\nGet[\"BcMixingCoordinateDirect.wl\"];\nDirectCompareAll[m2Test, s0Test] // Dataset\nDirectCondensateComparisonToMomentum[m2Test, s0Test, \"G2\"] // Dataset\nDirectCondensateComparisonToMomentum[m2Test, s0Test, \"G3\"] // Dataset\n*)"], "Input"]
+},
+WindowTitle -> "B_c Direct Coordinate Mixing Calculation",
+WindowSize -> {1150, 760},
+WindowMargins -> {{Automatic, 80}, {Automatic, 30}},
+StyleDefinitions -> "Default.nb"]

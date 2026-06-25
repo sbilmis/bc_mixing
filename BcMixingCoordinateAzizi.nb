@@ -1,0 +1,69 @@
+Notebook[{
+  Cell["B_c Mixing Angle: Coordinate-Space Azizi/OPE Workflow", "Title"],
+  Cell["This notebook is the publication workflow for the coordinate-space route using the Azizi-style Bessel/Schwinger reduction implemented in BcMixingCoordinateOPE.wl. It does not call the momentum-space Monte Carlo engine.", "Text"],
+
+  Cell["Load", "Section"],
+  Cell[BoxData["SetDirectory[NotebookDirectory[]];"], "Input"],
+  Cell[BoxData["Get[\"BcMixingCoordinateOPE.wl\"];"], "Input"],
+  Cell[BoxData["CoordinateOPEEnvironment[] // Dataset"], "Input"],
+  Cell[BoxData["CoordinateOPEStatus[] // Dataset"], "Input"],
+
+  Cell["Run Controls", "Section"],
+  Cell[BoxData["m2Test = 8.0;\ns0Test = 54.0;\ncoordinateAziziOrder = \"totalFull\";\ncoordinateAziziNPoints = 25;\ncoordinateAziziYHalfWidth = 1.0;\ncoordinateAziziPlotRange = $BcCoordinateMomentumComparableThetaRange;\ncoordinateAziziMonteCarloSamples = 50;\ncoordinateAziziMonteCarloBins = 15;\ncoordinateAziziIncludeG3 = True;\ncoordinateAziziExportPDF = False;"], "Input"],
+  Cell["Set coordinateAziziOrder to \"pert\", \"pertG2full\", or \"totalFull\". If coordinateAziziIncludeG3 is False and the requested Monte Carlo order is \"totalFull\", the Monte Carlo evaluates \"pertG2full\".", "Text"],
+
+  Cell["Central Values", "Section"],
+  Cell[BoxData["CoordinateOPENumericOPESummary[m2Test, s0Test] // Dataset"], "Input"],
+  Cell[BoxData["CoordinateOPEMixingAngle[m2Test, s0Test, coordinateAziziOrder]"], "Input"],
+
+  Cell["Derivative And Pole-Weight Checks", "Section"],
+  Cell[BoxData["Lookup[CoordinateOPEFeynCalcGaussianMultiplierReport[][\"PowerChecks\"], \"Difference\"]"], "Input"],
+  Cell[BoxData["CoordinateOPEG2PoleWeightCheck @@@ Tuples[{{\"AA\", \"AB\", \"BB\"}, {\"G2c\", \"G2b\", \"G2gg\"}}]"], "Input"],
+  Cell[BoxData["CoordinateOPEG3PoleWeightCheck @@@ Tuples[{{\"AA\", \"AB\", \"BB\"}, {\"G3c\", \"G3b\"}}]"], "Input"],
+
+  Cell["OPE Hierarchy", "Section"],
+  Cell[BoxData["coordinateAziziOPEConvergence = CoordinateOPEConvergenceScan[{7.0, 9.0, 3}, {53.0, 55.0, 3}];"], "Input"],
+  Cell[BoxData["coordinateAziziOPEConvergence // Dataset"], "Input"],
+  Cell[BoxData["CoordinateOPEExportConvergenceCSV[coordinateAziziOPEConvergence, \"BcMixingCoordinateAziziOPEConvergence_WangWindow.csv\"]"], "Input"],
+
+  Cell["Theta Decomposition at Fixed s0", "Section"],
+  Cell["This is the paper-facing comparison: the physical mixing angle is plotted for perturbative, perturbative plus G2, and total OPE orders at fixed s0.", "Text"],
+  Cell[BoxData["coordinateAziziThetaOrderM2 = CoordinateOPEMixingAngleOrderM2PublicationPlot[\n  $BcCoordinateWangWindow[\"M2Range\"],\n  53.0,\n  {\"pert\", \"pertG2full\", \"totalFull\"},\n  $BcCoordinateDefaultParameters,\n  \"NPoints\" -> coordinateAziziNPoints,\n  \"YHalfWidth\" -> 0.25,\n  PlotRange -> {$BcCoordinateWangWindow[\"M2Range\"], Automatic}\n];"], "Input"],
+  Cell[BoxData["coordinateAziziThetaOrderM2[\"Plot\"]"], "Input"],
+  Cell[BoxData["coordinateAziziThetaOrderM2[\"Data\"] // Dataset"], "Input"],
+  Cell[BoxData["If[TrueQ[coordinateAziziExportPDF],\n  Export[\"BcMixingCoordinateAziziThetaOrdersVsM2_s0_53.pdf\", coordinateAziziThetaOrderM2[\"Plot\"]],\n  \"Theta-order PDF export skipped. Set coordinateAziziExportPDF = True when ready.\"\n]"], "Input"],
+
+  Cell["OPE Ratio Diagnostics", "Section"],
+  Cell["This diagnostic plot is for OPE convergence, not for the final angle itself. It shows the channel-level sizes of G2 and G3 relative to the perturbative moment for AA, AB, and BB.", "Text"],
+  Cell[BoxData["coordinateAziziRatioM2 = CoordinateOPEContributionRatioM2PublicationPlot[\n  $BcCoordinateWangWindow[\"M2Range\"],\n  53.0,\n  $BcCoordinateDefaultParameters,\n  \"NPoints\" -> coordinateAziziNPoints,\n  \"UseAbs\" -> True\n];"], "Input"],
+  Cell[BoxData["coordinateAziziRatioM2[\"Plot\"]"], "Input"],
+  Cell[BoxData["coordinateAziziRatioM2[\"Data\"] // Dataset"], "Input"],
+  Cell[BoxData["If[TrueQ[coordinateAziziExportPDF],\n  Export[\"BcMixingCoordinateAziziOPERatiosVsM2_s0_53.pdf\", coordinateAziziRatioM2[\"Plot\"]],\n  \"OPE-ratio PDF export skipped. Set coordinateAziziExportPDF = True when ready.\"\n]"], "Input"],
+
+  Cell["Wang-Window Stability: theta versus M2", "Section"],
+  Cell[BoxData["coordinateAziziM2Stability = CoordinateOPEM2StabilityPublicationPlot[\n  $BcCoordinateWangWindow[\"M2Range\"],\n  $BcCoordinateWangWindow[\"s0Values\"],\n  coordinateAziziOrder,\n  $BcCoordinateDefaultParameters,\n  \"NPoints\" -> coordinateAziziNPoints,\n  \"YHalfWidth\" -> coordinateAziziYHalfWidth,\n  PlotRange -> {$BcCoordinateWangWindow[\"M2Range\"], coordinateAziziPlotRange}\n];"], "Input"],
+  Cell[BoxData["coordinateAziziM2Stability[\"Plot\"]"], "Input"],
+  Cell[BoxData["CoordinateExportStabilityDataCSV[coordinateAziziM2Stability[\"Data\"], \"BcMixingCoordinateAziziThetaVsM2_WangWindow.csv\", \"M2\"]"], "Input"],
+
+  Cell["Wang-Window Stability: theta versus s0", "Section"],
+  Cell[BoxData["coordinateAziziS0Stability = CoordinateOPES0StabilityPublicationPlot[\n  $BcCoordinateWangWindow[\"s0Range\"],\n  $BcCoordinateWangWindow[\"M2Values\"],\n  coordinateAziziOrder,\n  $BcCoordinateDefaultParameters,\n  \"NPoints\" -> coordinateAziziNPoints,\n  \"YHalfWidth\" -> coordinateAziziYHalfWidth,\n  PlotRange -> {$BcCoordinateWangWindow[\"s0Range\"], coordinateAziziPlotRange}\n];"], "Input"],
+  Cell[BoxData["coordinateAziziS0Stability[\"Plot\"]"], "Input"],
+  Cell[BoxData["CoordinateExportStabilityDataCSV[coordinateAziziS0Stability[\"Data\"], \"BcMixingCoordinateAziziThetaVsS0_WangWindow.csv\", \"s0\"]"], "Input"],
+
+  Cell["Optional Stability PDF Export", "Section"],
+  Cell[BoxData["If[TrueQ[coordinateAziziExportPDF],\n  {\n    Export[\"BcMixingCoordinateAziziThetaVsM2_WangWindow.pdf\", coordinateAziziM2Stability[\"Plot\"]],\n    Export[\"BcMixingCoordinateAziziThetaVsS0_WangWindow.pdf\", coordinateAziziS0Stability[\"Plot\"]]\n  },\n  \"PDF export skipped. Set coordinateAziziExportPDF = True when ready.\"\n]"], "Input"],
+
+  Cell["Monte Carlo Uncertainty", "Section"],
+  Cell[BoxData["coordinateAziziUncertainty = CoordinateOPEMonteCarloMixingAngleUncertainty[\n  coordinateAziziMonteCarloSamples,\n  $BcCoordinateDefaultUncertaintyRanges,\n  coordinateAziziOrder,\n  \"IncludeG3\" -> coordinateAziziIncludeG3,\n  \"Seed\" -> 1234,\n  \"Progress\" -> True\n];"], "Input"],
+  Cell[BoxData["coordinateAziziUncertainty[\"Summary\"] // Dataset"], "Input"],
+  Cell[BoxData["CoordinateOPEMonteCarloMixingAngleDataset[coordinateAziziUncertainty]"], "Input"],
+  Cell[BoxData["CoordinateOPEMonteCarloMixingAnglePublicationHistogram[coordinateAziziUncertainty, coordinateAziziMonteCarloBins]"], "Input"],
+  Cell[BoxData["CoordinateOPEExportMonteCarloMixingAngleSamples[coordinateAziziUncertainty, \"BcMixingCoordinateAziziMonteCarloSamples.csv\"];\nCoordinateOPEExportMonteCarloMixingAngleSummary[coordinateAziziUncertainty, \"BcMixingCoordinateAziziMonteCarloSummary.csv\"];"], "Input"],
+
+  Cell["Publication Notes", "Section"],
+  Cell[BoxData["CoordinateOPEJournalChecklist[] // Dataset"], "Input"]
+},
+WindowTitle -> "B_c Coordinate-Space Azizi/OPE Workflow",
+WindowSize -> {1150, 760},
+WindowMargins -> {{Automatic, 80}, {Automatic, 30}},
+StyleDefinitions -> "Default.nb"]

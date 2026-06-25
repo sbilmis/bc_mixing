@@ -1,3 +1,12 @@
 *.aux
+*.fdb_latexmk
+*.fls
 *.log
 *.out
+*.toc
+
+.DS_Store
+old/
+output/
+tmp/
+X-master.tar.gz

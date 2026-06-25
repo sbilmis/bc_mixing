@@ -119,8 +119,36 @@ The implemented OPE orders are
 \end{equation}
 The implemented dimension-6 triple-gluon condensate
 $\langle g_s^3G^3\rangle$ is the standard vacuum-averaged single-line
-propagator term. Possible cross-line open-field $G^3$ terms need a separate
-derivation.
+propagator term,
+\begin{equation}
+  \Pi^{ij}_{G^3,\mathrm{single}}
+  =
+  \Pi^{ij}\!\left[S_c^{(G^3)}S_b^{(0)}\right]
+  +
+  \Pi^{ij}\!\left[S_c^{(0)}S_b^{(G^3)}\right].
+\end{equation}
+This is the convention used in both the momentum-space calculation and the
+coordinate-space OPE calculation.  The complete dimension--6 basis generated
+by multiplying two background-field heavy-quark propagators also contains
+cross-line open-field terms,
+\begin{equation}
+  \Pi^{ij}_{G^3,\mathrm{cross}}
+  =
+  \Pi^{ij}\!\left[
+    S_c^{(GG,\mathrm{open})}S_b^{(G,\mathrm{open})}
+  \right]
+  +
+  \Pi^{ij}\!\left[
+    S_c^{(G,\mathrm{open})}S_b^{(GG,\mathrm{open})}
+  \right].
+\end{equation}
+These terms are not contained in
+\(\Pi^{ij}_{G^3,\mathrm{single}}\).  They require the explicitly open
+two-gluon heavy-quark propagator \(S_Q^{(GG,\mathrm{open})}\), i.e. the
+unaveraged object before replacing two background gluons by
+\(\langle g_s^2G^2\rangle\).  The audit helper
+\texttt{BcMixingDimension6Complete.wl} records this missing sector and should
+be used before any result is labelled \(G^3_{\mathrm{complete}}\).
 
 \section{How to reproduce the calculation while reading this note}
 
@@ -500,16 +528,264 @@ vacuum-averaged heavy-quark propagator term
 \end{equation}
 The implemented dimension-6 contribution is
 \begin{equation}
-  \Pi_{G^3}^{ij}
+  \Pi_{G^3,\mathrm{single}}^{ij}
   =
   \Pi^{ij}[S_c^{(G^3)}S_b^{(0)}]
   +
   \Pi^{ij}[S_c^{(0)}S_b^{(G^3)}].
 \end{equation}
-This is the standard single-heavy-propagator contribution.  It does not yet
-include any possible cross-line open-field terms of the schematic type
-$S^{(G^2_{\rm open})}S^{(G)}$, which require an explicitly open two-gluon
-propagator and a separate color/Lorentz derivation.
+This is the standard single-heavy-propagator contribution.  The complete
+dimension--6 result would be
+\begin{equation}
+  \Pi_{G^3,\mathrm{complete}}^{ij}
+  =
+  \Pi_{G^3,\mathrm{single}}^{ij}
+  +
+  \Pi_{G^3,\mathrm{cross}}^{ij},
+\end{equation}
+where
+\begin{equation}
+  \Pi_{G^3,\mathrm{cross}}^{ij}
+  =
+  \Pi^{ij}[S_c^{(GG,\mathrm{open})}S_b^{(G,\mathrm{open})}]
+  +
+  \Pi^{ij}[S_c^{(G,\mathrm{open})}S_b^{(GG,\mathrm{open})}].
+\end{equation}
+The necessary vacuum average has the schematic form
+\begin{align}
+  \left\langle
+    g_s^3G_A^{\alpha\beta}
+    G_B^{\rho\sigma}
+    G_C^{\lambda\tau}
+  \right\rangle
+  &=
+  \frac{f_{ABC}}{576}
+  \left\langle g_s^3G^3\right\rangle
+  T^{\alpha\beta,\rho\sigma,\lambda\tau},\\
+  T^{\alpha\beta,\rho\sigma,\lambda\tau}
+  &=
+  g^{\alpha\rho}
+  (g^{\beta\lambda}g^{\sigma\tau}
+  -g^{\beta\tau}g^{\sigma\lambda})
+  -g^{\alpha\sigma}
+  (g^{\beta\lambda}g^{\rho\tau}
+  -g^{\beta\tau}g^{\rho\lambda})
+  \nonumber\\
+  &\quad
+  -g^{\beta\rho}
+  (g^{\alpha\lambda}g^{\sigma\tau}
+  -g^{\alpha\tau}g^{\sigma\lambda})
+  +g^{\beta\sigma}
+  (g^{\alpha\lambda}g^{\rho\tau}
+  -g^{\alpha\tau}g^{\rho\lambda}).
+\end{align}
+The coefficient is fixed by the candidate normalization
+\begin{equation}
+  f^{ABC}
+  \left\langle
+    g_s^3G_A^{\mu\nu}G_B^{\nu\rho}G_C^{\rho\mu}
+  \right\rangle
+  =
+  \left\langle g_s^3G^3\right\rangle,
+  \qquad
+  T_{\mu\nu,\nu\rho,\rho\mu}=24,\quad
+  f^{ABC}f^{ABC}=24
+  \quad (N_c=3).
+\end{equation}
+Before using this numerically, the sign and index order must be checked against
+the convention used for \(\langle g_s^3G^3\rangle\).  Most importantly,
+\(S_Q^{(GG,\mathrm{open})}\) is not obtained by ``undoing'' the averaged
+\(S_Q^{(G^2)}\) propagator; it must be derived or imported as an explicitly
+open-field two-gluon propagator.  This is why the present numerical notebooks
+quote \(G^3_{\mathrm{single}}\), not \(G^3_{\mathrm{complete}}\).
+
+The active implementation path is now encoded in
+\texttt{BcMixingDimension6Complete.wl}.  The required fixed-point-gauge
+derivation is:
+\begin{enumerate}
+  \item Use \(x^\mu A_\mu(x)=0\) and expand
+  \(A_\mu^A(y)=\frac12 y^\alpha G_{\alpha\mu}^A(0)+\cdots\).
+  \item In momentum space replace \(y^\alpha\) by \(i\partial/\partial k_\alpha\).
+  \item Expand the heavy propagator recursively,
+  \(S=S_0+S_1+S_2+\cdots\), keeping the color order in
+  \(S_2\) as \(T^AT^B\) and \(T^BT^A\).
+  \item Fix all signs and factors by requiring \(S_1\) to reproduce the
+  one-gluon propagator used in the momentum-space code.
+  \item Vacuum-average the two gluons inside \(S_2\).  This same-line
+  contraction must reproduce the implemented
+  \[
+    S_Q^{(G^2)}(k)
+    =
+    \frac{\langle g_s^2G^2\rangle}{12}
+    m_Q
+    \frac{k^2+m_Q\slashed{k}}{(k^2-m_Q^2)^4}.
+  \]
+  \item Only after this calibration may the cross-line products
+  \(S_c^{(GG,\mathrm{open})}S_b^{(G,\mathrm{open})}\) and
+  \(S_c^{(G,\mathrm{open})}S_b^{(GG,\mathrm{open})}\) be reduced to Borel
+  moments.
+\end{enumerate}
+This protects the calculation from a common error: using an averaged
+\(G^2\) propagator as if it still contained the color and Lorentz information
+needed for a triple-gluon cross-line contraction.
+
+The Wolfram file now contains an experimental implementation of this derivation
+route:
+\begin{verbatim}
+Get["BcMixingMomentum.wl"];
+Get["BcMixingDimension6Complete.wl"];
+D6OneGluonCalibrationResidual[k, mc, al, be, Cins]
+D6OpenTwoGluonCandidate[k, mc, al, be, rh, si, Cins]
+\end{verbatim}
+The first line is the decisive test.  A candidate insertion operator is not
+accepted until the residual vanishes after fixing the insertion coefficient
+\(\texttt{Cins}\) and simplifying in the same Dirac/Feynman-denominator
+convention used by the momentum-space calculation.  The present simple
+fixed-point-gauge repeated-insertion ansatz does not yet pass this test; hence
+no paper-final \(G^3_{\mathrm{cross}}\) moment is quoted in the production
+notebooks.  This is a calculation result, not merely a missing switch: the
+color-antisymmetric part needed by \(f^{ABC}\langle G_AG_BG_C\rangle\) is not
+fixed by the same-line \(G^2\) propagator.
+
+As an exploratory check, the workbench now reduces one side of the cross-line
+operator through the full sequence
+\[
+  S_c^{(GG,\mathrm{open})}S_b^{(G,\mathrm{open})}
+  \rightarrow
+  P_1^{\mu\nu}\Pi_{\mu\nu}
+  \rightarrow
+  \mathcal{A}(x,s)
+  \rightarrow
+  \widehat{\mathcal B}_{M^2}\mathcal{A}.
+\]
+For the \(AA\) channel at the central Wang-window point,
+\[
+  M^2=8.0~\mathrm{GeV}^2,\qquad s_0=54.0~\mathrm{GeV}^2,
+\]
+the tested side gives
+\begin{equation}
+  \Pi_{G^3,\mathrm{cross};\,c2b1}^{AA}
+  =
+  -1.6756975780964764\times 10^{-6}.
+\end{equation}
+The mirror side is more expensive, but it can be evaluated with cached
+termwise traces and Feynman-parameter chunks.  The corresponding central value
+is
+\begin{equation}
+  \Pi_{G^3,\mathrm{cross};\,c1b2}^{AA}
+  =
+  3.378713957299235\times 10^{-7}.
+\end{equation}
+Thus the currently tested \(AA\) cross-line sum is
+\begin{equation}
+  \Pi_{G^3,\mathrm{cross}}^{AA}
+  =
+  -1.337826182366553\times 10^{-6}
+  \qquad
+  (M^2=8.0~\mathrm{GeV}^2,\ s_0=54.0~\mathrm{GeV}^2).
+\end{equation}
+The \(AB\) and \(BB\) reductions have also been completed with the same cached
+termwise method.  At the same central point the cross-line moments are
+\[
+\begin{array}{c|ccc}
+ij
+&
+\Pi_{G^3,\mathrm{cross};\,c2b1}^{ij}
+&
+\Pi_{G^3,\mathrm{cross};\,c1b2}^{ij}
+&
+\Pi_{G^3,\mathrm{cross}}^{ij}
+\\ \hline
+AA
+&-1.6756975780964764\times10^{-6}
+&\phantom{-}3.378713957299235\times10^{-7}
+&-1.337826182366553\times10^{-6}
+\\
+AB
+&\phantom{-}6.907526226109287\times10^{-7}
+&\phantom{-}1.1921369599555478\times10^{-7}
+&\phantom{-}8.099663186064834\times10^{-7}
+\\
+BB
+&-1.168414043165516\times10^{-6}
+&-7.557182424790687\times10^{-7}
+&-1.924132285644585\times10^{-6}
+\end{array}
+\]
+Adding these cached cross-line moments to the current production moments gives
+\[
+  \theta_{\rm single-line~}G^3 = 43.310272930706944^\circ,
+  \qquad
+  \theta_{\rm with~cross-line} = 43.309988657908924^\circ,
+\]
+so that
+\begin{equation}
+  \Delta\theta_{G^3,\mathrm{cross}}
+  =
+  -2.8427279801945815\times10^{-4}~\mathrm{deg}.
+\end{equation}
+These numbers should still be read as validation of the algebraic workbench:
+the one-gluon calibration convention still needs a final audit.  Therefore the
+current paper-facing ``total'' result remains
+\[
+  \Pi_{\rm total}
+  =
+  \Pi_{\rm pert}
+  +
+  \Pi_{G^2}
+  +
+  \Pi_{G^3,\mathrm{single}},
+\]
+not \(\Pi_{G^3,\mathrm{complete}}\).  The current Mathematica status can be
+queried with \texttt{D6CrossLineValidationStatus[]}.
+
+Operationally, the momentum-space notebook \texttt{BcMixingMomentum.nb} is the
+file to run for the production momentum results.  In that notebook the order
+\texttt{"total"} means
+\[
+  \Pi_{\rm pert}+\Pi_{G^2}+\Pi_{G^3,\mathrm{single}} .
+\]
+The switch \texttt{showCachedCompleteD6CentralQuote} only displays or quotes
+the cached central cross-line correction at
+\(M^2=8~\mathrm{GeV}^2\), \(s_0=54~\mathrm{GeV}^2\).  It is not a substitute
+for a full \(M^2\)- and \(s_0\)-dependent cross-line grid.  Similarly, the
+Monte Carlo switch \texttt{requestCompleteD6CrossLineMonteCarlo} is kept
+\texttt{False} by default; a point-by-point uncertainty propagation of
+\(\Pi_{G^3,\mathrm{cross}}\) requires generating a cross-line grid or
+interpolation first.
+
+For the paper-style \(\theta(M^2)\) decomposition plot with the complete
+dimension--6 correction, the notebook contains a separate
+\texttt{Complete-D6 M2 Grid} block.  One first sets
+\begin{verbatim}
+completeD6PlotS0 = 53.0;
+completeD6GridNPoints = stabilityNPoints;
+generateCompleteD6CrossLineM2Grid = True;
+overwriteCompleteD6CrossLineM2Grid = False;
+\end{verbatim}
+and evaluates the grid cell.  The calculation stores each point in
+\texttt{d6\_chunks}; an interrupted calculation can therefore be resumed by
+rerunning the same cell.  Once the grid is available, set
+\begin{verbatim}
+generateCompleteD6CrossLineM2Grid = False;
+\end{verbatim}
+and the notebook loads the cache and plots four curves:
+\[
+  \theta_{\rm pert},\qquad
+  \theta_{\rm pert+G^2},\qquad
+  \theta_{\rm pert+G^2+G^3_{\rm single}},\qquad
+  \theta_{\rm pert+G^2+G^3_{\rm single}+G^3_{\rm cross}} .
+\]
+
+The product
+\[
+  S_c^{(GG,\mathrm{open})}S_b^{(GG,\mathrm{open})}
+\]
+is not part of the dimension--6 \(G^3\) basis.  It contains four background
+field strengths and therefore belongs to the dimension--8 OPE sector,
+schematically \(\langle G^4\rangle\), or under factorization
+\(\langle G^2\rangle^2\).  It should be considered only in a higher-dimensional
+OPE extension, not in \(G^3_{\mathrm{complete}}\).
 
 The $G^2$ and $G^3$ terms are not treated as ordinary smooth spectral
 densities.  We instead use a direct Borel transform.  Set $s=-Q^2$ and write
@@ -651,9 +927,11 @@ At this point the relative condensate corrections are
 
 \section{Perturbative \texorpdfstring{$\alpha_s$}{alpha-s} sensitivity model}
 
-The full perturbative $O(\alpha_s)$ correction is not yet calculated.  As a
-diagnostic, the code implements a channel-dependent trial rescaling of the
-leading perturbative moment,
+The independent \(O(\alpha_s)\) correction to the \(AA\) channel has now been
+calculated in \texttt{BcMixingAlphaS.wl}.  The corresponding \(AB\) and \(BB\)
+tensor-current corrections are not yet available.  Before the explicit
+calculation was started, the code used the following channel-dependent trial
+rescaling of the leading perturbative moments:
 \begin{equation}
   \Pi_{\rm pert}^{ij}(M^2,s_0)
   \longrightarrow
@@ -675,8 +953,28 @@ The condensate pieces are left unchanged, so for the current total moment
   +
   \Pi_{G^3}^{ij}.
 \end{equation}
-This is only a sensitivity model; it is not a substitute for the real
-two-loop NLO perturbative spectral density.
+This remains useful as a \emph{sensitivity model}, but it is not a
+calculation of a two-loop spectral density.  A master's student should
+distinguish the following questions:
+\begin{enumerate}
+  \item The explicit NLO calculation asks: what functions
+  \(\rho_1^{AA}(s)\), \(\rho_1^{AB}(s)\), and \(\rho_1^{BB}(s)\) follow from
+  QCD?
+  \item The \(K_{ij}\) model asks: how much would the mixing angle move if
+  the three moments were rescaled by selected constants?
+\end{enumerate}
+The model cannot check the threshold dependence, logarithms, mass scheme,
+real--virtual cancellation, or continuum-subtracted shape of the true NLO
+spectral density.  Its value is that it exposes cancellations in
+\begin{equation}
+ \tan(2\theta)=
+ \frac{-2\Pi^{AB}}{\Pi^{AA}-\Pi^{BB}}.
+\end{equation}
+If \(K_{AA}=K_{AB}=K_{BB}\), the perturbative pieces receive nearly a common
+factor and much of the correction cancels from the angle.  Large shifts arise
+when the channel corrections are different.  Therefore the scan estimates
+the possible \emph{angle sensitivity}; it does not estimate the size or
+correctness of the \(AA\) correction.
 
 For example, with $\alpha_s=0.26$ and
 \begin{equation}
@@ -693,12 +991,16 @@ to
   \qquad
   \Delta\theta=-3.116971851^\circ.
 \end{equation}
-A coarse scan with
+A deliberately broad coarse scan with
 $K_{AA},K_{AB},K_{BB}\in\{-2,0,2\}$ gives a maximum branch-corrected shift of
 about
 \begin{equation}
   \max|\Delta\theta|\simeq 7.52^\circ.
 \end{equation}
+This result is helpful because it shows that channel-to-channel differences
+can move the angle by several degrees.  It should not be quoted as a QCD
+uncertainty distribution, because the three \(K_{ij}\) values are neither
+derived nor statistically distributed.
 
 \section{Monte Carlo uncertainty propagation}
 
@@ -768,20 +1070,32 @@ Accepted points are evaluated with the same OPE formula as above,
     -2\Pi_1^{AB}(X_i)
   \right],
 \end{equation}
-using the chosen OPE order, normally ``total'' for
-\(\Pi_{\rm pert}+\Pi_{G^2}+\Pi_{G^3}\).
-For the present fast uncertainty scan we keep the triple-gluon term switched
-off by default.  In the Mathematica implementation this is controlled by
-\texttt{\$BcMixingMonteCarloIncludeG3=False} or by the option
-\texttt{"IncludeG3" -> False}.  With this switch, a requested ``total'' Monte
-Carlo scan is evaluated as ``pertG2'',
+using the chosen OPE order.  The paper-facing momentum-space uncertainty scan
+now uses ``total'',
+\[
+  \Pi_{\rm MC}^{ij}
+  =
+  \Pi_{\rm pert}^{ij}
+  +
+  \Pi_{G^2}^{ij}
+  +
+  \Pi_{G^3,\mathrm{single}}^{ij},
+\]
+by setting \texttt{"IncludeG3" -> True} in the Monte Carlo call.  The
+package-level default
+\begin{verbatim}
+$BcMixingMonteCarloIncludeG3 = False
+\end{verbatim}
+remains conservative so that quick exploratory scans do not accidentally
+evaluate the slower \(G^3\) Borel moments.  With
+\texttt{"IncludeG3" -> False}, a requested
+``total'' Monte Carlo scan is evaluated as ``pertG2'',
 \begin{equation}
   \Pi_{\rm MC}^{ij}
   =
   \Pi_{\rm pert}^{ij}+\Pi_{G^2}^{ij},
 \end{equation}
-and the \(G^3\) contribution can be restored later by setting
-\texttt{"IncludeG3" -> True}.
+which is useful only as a diagnostic comparison.
 
 The central value and Gaussian-width estimate are then
 \begin{equation}
@@ -887,6 +1201,56 @@ uncertaintyRun = MonteCarloMixingAngleUncertainty[50, $BcMixingDefaultUncertaint
 uncertaintyRun["Summary"]
 \end{verbatim}
 
+For paper presentation the most meaningful decomposition plot is the physical
+mixing angle itself.  We therefore plot \(\theta(M^2)\) at fixed \(s_0\) for
+the perturbative, perturbative plus \(G^2\), and total OPE orders:
+\begin{verbatim}
+thetaOrderM2 = MixingAngleOrderM2PublicationPlot[
+  $BcMixingWangWindow["M2Range"],
+  53.0,
+  {"pert", "pertG2", "total"},
+  $BcMixingDefaultParameters,
+  "NPoints" -> 25,
+  "YHalfWidth" -> 1.0
+];
+
+thetaOrderM2["Plot"]
+thetaOrderM2["Data"] // Dataset
+\end{verbatim}
+
+The channel-level OPE hierarchy is then shown separately through
+\[
+  \left|
+  \frac{\Pi_{G^2}^{ij}}{\Pi_{\rm pert}^{ij}}
+  \right|,
+  \qquad
+  \left|
+  \frac{\Pi_{G^3}^{ij}}{\Pi_{\rm pert}^{ij}}
+  \right|,
+  \qquad ij=AA,AB,BB.
+\]
+This separation is important: \(AA\), \(AB\), and \(BB\) are not separate
+mixing-angle predictions; they are the three invariant amplitudes entering the
+single mixing-angle formula.  The diagnostic plot is generated by
+\begin{verbatim}
+momentumRatioM2 = OPEContributionRatioM2PublicationPlot[
+  $BcMixingWangWindow["M2Range"],
+  53.0,
+  $BcMixingDefaultParameters,
+  "NPoints" -> 25,
+  "UseAbs" -> True
+];
+
+momentumRatioM2["Plot"]
+momentumRatioM2["Data"] // Dataset
+\end{verbatim}
+Setting \texttt{"UseAbs" -> False} displays the signed ratios
+\begin{equation}
+  \frac{\Pi_{G^2}^{ij}}{\Pi_{\rm pert}^{ij}},\,
+  \qquad
+  \frac{\Pi_{G^3}^{ij}}{\Pi_{\rm pert}^{ij}}.
+\end{equation}
+
 \section{Auxiliary-parameter stability plots}
 
 As a comparison with the vector \(B_c^*\) analysis of Wang, we also consider
@@ -902,7 +1266,7 @@ $BcMixingWangWindow
 \end{verbatim}
 and produces publication-style stability plots with
 \begin{verbatim}
-stabilityOrder = "pertG2";
+stabilityOrder = "total";
 
 m2Stability = MixingAngleStabilityM2PublicationPlot[
   $BcMixingWangWindow["M2Range"],
@@ -948,12 +1312,18 @@ ExportStabilityDataCSV[s0Stability["Data"],
   "BcMixingThetaVsS0_WangWindow.csv", "s0"];
 \end{verbatim}
 
-\section{Coordinate-space cross-check}
+\section{Independent coordinate-space route}
 
-The file \texttt{BcMixingCoordinate.wl} starts an independent coordinate-space
-validation of the perturbative part.  This is meant as a blind check of the
-momentum-space calculation, not as a replacement of it.  The same interpolating
-currents and the same normalization of the tensor current are used,
+The file \texttt{BcMixingCoordinate.wl} defines an independent
+coordinate-space route.  In the current Mathematica workflow the notebook
+\texttt{BcMixingCoordinate.nb} loads only this coordinate file in its main
+calculation path.  Momentum-space comparisons are kept in an optional
+commented section and should not be used to generate coordinate-space
+paper-final numbers.
+
+At present, the independent coordinate-space result is the perturbative
+spectral density and its Borel moments.  The same interpolating currents and
+the same normalization of the tensor current are used,
 \begin{equation}
   J^A_\mu(x)=\bar b(x)\gamma_\mu\gamma_5c(x),
   \qquad
@@ -1228,15 +1598,15 @@ At this stage the direct method must extract the discontinuity in
 \(p^2=s\) from the Bessel product itself.  If Schwinger parameters are
 introduced only as a calculational aid, one meets distributions of the type
 \begin{equation}
-  \delta\!\left(s-\frac{m_c^2}{x}
-                 -\frac{m_b^2}{1-x}\right),
+  \delta\!\left(s-\frac{m_b^2}{x}
+                 -\frac{m_c^2}{1-x}\right),
 \end{equation}
 and, when numerator powers or derivatives act on the Fourier kernel,
 derivatives of the same delta function,
 \begin{equation}
   \delta^{(n)}\!\left(s-\bar s(x)\right),
   \qquad
-  \bar s(x)=\frac{m_c^2}{x}+\frac{m_b^2}{1-x}.
+  \bar s(x)=\frac{m_b^2}{x}+\frac{m_c^2}{1-x}.
 \end{equation}
 These objects must be treated analytically.  For example,
 \begin{equation}
@@ -1260,6 +1630,150 @@ For derivative delta functions one must integrate by parts,
 \end{equation}
 carefully keeping the Jacobian factors and verifying that no endpoint terms
 survive after the physical support restriction is imposed.
+
+\subsubsection{Explicit treatment of \texorpdfstring{\(\delta\)}{delta} and
+\texorpdfstring{\(\delta'\)}{delta-prime} terms}
+
+For the direct non-Azizi route we use the parameter assignment
+\begin{equation}
+  \bar s(x)
+  =
+  \frac{m_b^2}{x}
+  +
+  \frac{m_c^2}{1-x}
+  =
+  \frac{m_c^2x+m_b^2(1-x)}{x(1-x)}.
+\end{equation}
+The physical support is obtained by solving
+\(\bar s(x)<s\).  The two roots are
+\begin{equation}
+  x_\pm(s)
+  =
+  \frac{s+m_b^2-m_c^2
+  \pm\sqrt{\lambda(s,m_b,m_c)}}{2s},
+\end{equation}
+and they are real only when
+\begin{equation}
+  s\geq s_{\rm th}=(m_b+m_c)^2.
+\end{equation}
+The derivative needed in the Jacobian is
+\begin{equation}
+  \bar s'(x)
+  =
+  -\frac{m_b^2}{x^2}
+  +
+  \frac{m_c^2}{(1-x)^2}.
+\end{equation}
+Therefore the ordinary delta-function integral is
+\begin{align}
+  I_0[F](s)
+  &=
+  \int_0^1dx\,F(x)\,
+  \delta\!\left(s-\bar s(x)\right)
+  \nonumber\\
+  &=
+  \Theta(s-s_{\rm th})
+  \sum_{\eta=\pm}
+  \frac{F(x_\eta(s))}
+       {|\bar s'(x_\eta(s))|}.
+\end{align}
+This is the explicit origin of both the threshold factor and the finite
+domain \(x_-(s)<x<x_+(s)\).
+
+For higher derivatives the cleanest identity is
+\begin{equation}
+  \delta^{(n)}\!\left(s-\bar s(x)\right)
+  =
+  \frac{\partial^n}{\partial s^n}
+  \delta\!\left(s-\bar s(x)\right),
+\end{equation}
+where the derivative is with respect to the full argument \(s-\bar s(x)\).
+Hence, at the level of a spectral density,
+\begin{equation}
+  I_n[F](s)
+  =
+  \int_0^1dx\,F(x)\,
+  \delta^{(n)}\!\left(s-\bar s(x)\right)
+  =
+  \frac{d^n}{ds^n}I_0[F](s).
+\end{equation}
+This formula is correct, but differentiating the explicit
+\(\Theta(s-s_{\rm th})\) form can produce threshold-localized distributions.
+For the Borel sum rule it is usually safer to leave the delta derivative
+inside the \(s\)-integral until after continuum subtraction.
+
+The continuum-subtracted Borel object for a generic term is
+\begin{equation}
+  \mathcal B_n[W]
+  =
+  \int_0^1dx
+  \int_{s_{\rm th}}^{s_0}ds\,
+  e^{-s/M^2}
+  W(s,x)
+  \delta^{(n)}\!\left(s-\bar s(x)\right).
+\end{equation}
+Using the distribution identity
+\begin{equation}
+  \int ds\,\phi(s)\delta^{(n)}(s-a)
+  =
+  (-1)^n\phi^{(n)}(a),
+\end{equation}
+one obtains
+\begin{equation}
+  \mathcal B_n[W]
+  =
+  \int_{x_-(s_0)}^{x_+(s_0)}dx\,
+  (-1)^n
+  \left[
+    \frac{\partial^n}{\partial s^n}
+    \left(e^{-s/M^2}W(s,x)\right)
+  \right]_{s=\bar s(x)}.
+\end{equation}
+This equation is the practical rule we should use for direct \(G^2\) and
+\(G^3\) terms.  The finite limits \(x_\pm(s_0)\) encode the condition
+\(\bar s(x)<s_0\); the lower threshold is automatic because
+\(\bar s(x)\geq (m_b+m_c)^2\) for \(0<x<1\).
+
+For the common case in which \(W\) has no explicit \(s\)-dependence,
+\begin{equation}
+  \mathcal B_n[F]
+  =
+  \int_{x_-(s_0)}^{x_+(s_0)}dx\,
+  \frac{F(x)}{(M^2)^n}
+  \exp\!\left[-\frac{\bar s(x)}{M^2}\right].
+\end{equation}
+For the first two derivative cases with an explicitly \(s\)-dependent
+coefficient \(W(s,x)\), the formulas are
+\begin{align}
+  \mathcal B_1[W]
+  &=
+  \int_{x_-(s_0)}^{x_+(s_0)}dx\,
+  e^{-\bar s(x)/M^2}
+  \left[
+    \frac{W(\bar s(x),x)}{M^2}
+    -
+    W_s(\bar s(x),x)
+  \right],
+  \\
+  \mathcal B_2[W]
+  &=
+  \int_{x_-(s_0)}^{x_+(s_0)}dx\,
+  e^{-\bar s(x)/M^2}
+  \left[
+    W_{ss}(\bar s(x),x)
+    -
+    \frac{2W_s(\bar s(x),x)}{M^2}
+    +
+    \frac{W(\bar s(x),x)}{(M^2)^2}
+  \right].
+\end{align}
+If a derivation instead produces
+\(\delta^{(n)}(\bar s(x)-s)\), one must multiply the above result by
+\((-1)^n\), since
+\begin{equation}
+  \delta^{(n)}(\bar s-s)=(-1)^n\delta^{(n)}(s-\bar s).
+\end{equation}
+This sign convention must be fixed before coding any direct condensate term.
 
 Thus the direct route has the schematic structure
 \begin{align}
@@ -1291,6 +1805,90 @@ current normalization \(1/(m_b+m_c)\).  The condensate terms are substantially
 more cumbersome in this route, since local \(G^2\), local \(G^3\), and the
 open-field \(S_c^{(G)}S_b^{(G)}\) term can generate higher derivatives of the
 same support delta functions.
+
+The file \texttt{BcMixingCoordinateDirect.wl} implements the first
+Mathematica version of this non-Azizi perturbative check.  It follows the
+Huang--Liu/Groote--Körner--Pivovarov viewpoint rather than the Azizi
+Borel-continuum prescription.  Here the discontinuity of two massive
+coordinate-space propagators is represented by the inverse-\(K\)-transform,
+equivalently the ordinary two-body cut.  The code keeps the support structure
+explicit through
+\begin{equation}
+  \bar s(x)
+  =
+  \frac{m_c^2x+m_b^2(1-x)}{x(1-x)},
+  \qquad
+  \delta\!\left(s-\bar s(x)\right)
+  \longrightarrow
+  \Theta\!\left(s-(m_b+m_c)^2\right),
+\end{equation}
+and records the corresponding roots \(x_\pm(s)\).  The entry points are
+\begin{verbatim}
+Get["BcMixingCoordinateDirect.wl"];
+DirectDeltaSupportNote[]
+DirectPerturbativeSpectralDensity["AA", s]
+DirectPerturbativeCheck[8.0, 54.0]
+\end{verbatim}
+After loading the ordinary coordinate-space file, the comparison
+\begin{verbatim}
+Get["BcMixingCoordinate.wl"];
+DirectCompareToCoordinate[8.0, 54.0]
+\end{verbatim}
+gives
+\begin{verbatim}
+<|"DirectPertDeg" -> 43.28944792785432,
+  "CoordinatePertDeg" -> 43.28944792785432,
+  "DifferenceDeg" -> 0.|>
+\end{verbatim}
+Thus the direct non-Azizi perturbative discontinuity reproduces the same
+mixing angle at the Wang-window test point.  This check should not yet be
+extended to condensates by guesswork.  The \(G^2\) and \(G^3\) terms contain
+higher powers of the coordinate variable and therefore generate derivatives
+of the support delta functions; their direct treatment requires a separate
+analytic derivation.
+
+A diagnostic condensate layer is also available in the direct-coordinate
+file.  It does not claim to be a fresh coordinate-space derivation of the
+condensate spectral densities.  Instead, it takes the pole expansion already
+obtained from the Feynman-parameter amplitude and rewrites each pole term as
+a \(\delta^{(n)}(s-\bar s)\) Borel weight.  This is a controlled test of the
+distribution algebra.  The entry points are
+\begin{verbatim}
+Get["BcMixingMomentum.wl"];
+Get["BcMixingCoordinateDirect.wl"];
+DirectCondensateWeightSummary["AA", "G2"]
+DirectCondensateComparisonToMomentum[8.0, 54.0, "G2"]
+DirectCondensateComparisonToMomentum[8.0, 54.0, "G3"]
+\end{verbatim}
+For \(G^2\), the derivative orders are \(\{0,1,2\}\).  For \(G^3\), the
+derivative orders are \(\{1,2,3,4\}\).  At \(M^2=8~\mathrm{GeV}^2\),
+\(s_0=54~\mathrm{GeV}^2\), the direct derivative-delta reconstruction agrees
+with the corrected momentum direct-Borel moments:
+\begin{align}
+  \Pi_{G^2}^{AA}
+  &=
+  -1.9315653037\times10^{-4},&
+  \Pi_{G^3}^{AA}
+  &=
+  4.4587307978\times10^{-5},\\
+  \Pi_{G^2}^{AB}
+  &=
+  1.2708857912\times10^{-4},&
+  \Pi_{G^3}^{AB}
+  &=
+  -3.4790161017\times10^{-5},\\
+  \Pi_{G^2}^{BB}
+  &=
+  -1.1094520542\times10^{-4},&
+  \Pi_{G^3}^{BB}
+  &=
+  2.3373372969\times10^{-5}.
+\end{align}
+The agreement is exact at the displayed numerical precision.  The code also
+now enforces that the explicit arguments of numerical routines,
+\(\texttt{M2}\) and \(\texttt{s0}\), override any \texttt{"M2"} or
+\texttt{"s0"} entries stored in a parameter association.  This prevents an
+old default Borel value from contaminating scans.
 
 \subsection{Where the Dirac delta and Heaviside functions enter}
 
@@ -1494,6 +2092,9 @@ which gives
   "DifferenceDeg" -> 0.|>
 \end{verbatim}
 for \(M^2=8~\mathrm{GeV}^2\) and \(s_0=54~\mathrm{GeV}^2\).
+This equality is a validation check only.  It should be reported as an
+agreement between two independent perturbative reductions, not as an input to
+the coordinate-space calculation.
 
 For the next stage, the coordinate-space \(G^2\) and \(G^3\) propagator
 kernels are already written as extension points.  The local-condensate
@@ -1544,12 +2145,12 @@ CoordinateTraceKernel["AA", "G2local"]  (* local sum of the two *)
 CoordinateTraceKernel["AA", "G3local"]  (* local single-line G3 sum *)
 \end{verbatim}
 At this stage, however, the numerical coordinate-space spectral/Borel
-integration is enabled directly only for \texttt{"pert"}.  A reduced
-Bessel/Schwinger integration bridge has now been added for the local
-single-line condensate pieces.  It is used only after loading
-\texttt{BcMixingMomentum.wl}, because that file already contains the tested
-Feynman/Schwinger parameter reduction and direct Borel transform.  The
-coordinate notebook therefore keeps these cells in an optional section:
+integration is enabled independently only for \texttt{"pert"}.  A reduced
+Bessel/Schwinger integration bridge exists for the local single-line
+condensate pieces, but that bridge is diagnostic: it is used only after
+loading \texttt{BcMixingMomentum.wl}, because that file contains the tested
+Feynman/Schwinger parameter reduction and direct Borel transform.  Therefore
+these cells are not part of a coordinate-space paper-final OPE result:
 \begin{verbatim}
 Get["BcMixingMomentum.wl"];
 Get["BcMixingCoordinate.wl"];
@@ -1571,8 +2172,8 @@ The labels mean
 At \(M^2=8~\mathrm{GeV}^2\), \(s_0=54~\mathrm{GeV}^2\), the local-coordinate
 test gives
 \begin{equation}
-  \theta_{\rm pert+G2local}=43.321950845^\circ,\qquad
-  \theta_{\rm pert+G2local+G3local}=43.308150036^\circ.
+  \theta_{\rm pert+G2local}=43.302779779^\circ,\qquad
+  \theta_{\rm pert+G2local+G3local}=43.295658148^\circ.
 \end{equation}
 The word ``local'' is important.  It means that the condensate is inserted on
 one heavy-quark line at a time.  For \(G^3\), this reproduces the
@@ -1585,13 +2186,13 @@ Numerically, for the \(AA\) channel at the same test point,
 \begin{align}
   \Pi_{G^2,\mathrm{local}}^{AA}
   &=
-  -3.1655383105\times10^{-4},\\
+  -1.7043477947\times10^{-4},\\
   \Pi_{G^2,\mathrm{full\ momentum}}^{AA}
   &=
-  -3.6293326185\times10^{-4},\\
+  -1.9315653037\times10^{-4},\\
   \Pi_{G^2,\mathrm{residual}}^{AA}
   &=
-  -4.6379430799\times10^{-5}.
+  -2.2721750899\times10^{-5}.
 \end{align}
 This residual is the target for the missing coordinate-space
 \(S_c^{(G)}(-x)S_b^{(G)}(x)\) derivation.  By contrast, the local coordinate
@@ -1599,10 +2200,10 @@ and momentum-space \(G^3\) moments agree numerically at this point:
 \begin{align}
   \Pi_{G^3,\mathrm{local}}^{AA}
   &=
-  6.8538572092\times10^{-5},\\
+  4.4587307978\times10^{-5},\\
   \Pi_{G^3,\mathrm{momentum}}^{AA}
   &=
-  6.8538572092\times10^{-5}.
+  4.4587307978\times10^{-5}.
 \end{align}
 This should not yet be quoted as the complete condensate-corrected coordinate
 result.  The reason is that the full dimension--4 contribution also contains
@@ -1614,6 +2215,454 @@ the open-field coordinate-space propagator.  The \(G^3\) comparison is
 optional because it is slower; setting \texttt{"IncludeG3" -> True} checks
 that the local coordinate \(G3c+G3b\) integration matches the momentum-space
 \(G^3\) contribution.
+
+\subsection{What remains for an independent coordinate-space OPE}
+
+For a separate coordinate-space publication, the following objects must be
+derived without calling the momentum-space OPE engine:
+\begin{enumerate}
+  \item The open-field coordinate-space propagator \(S_Q^{(G)}(x)\), before
+  vacuum averaging.
+  \item The cross-line trace
+  \[
+    \mathrm{Tr}\!\left[
+      \Gamma_i S_c^{(G)}(-x)\Gamma_j S_b^{(G)}(x)
+    \right],
+  \]
+  for \(ij=AA,AB,BB\), including the tensor-current normalization
+  \(p^\alpha/(m_b+m_c)\).
+  \item The coordinate-space vacuum contraction
+  \[
+    \left\langle
+      g_s^2G_A^{\alpha\beta}G_B^{\rho\sigma}
+    \right\rangle
+    =
+    \frac{\delta_{AB}}{96}
+    \langle g_s^2G^2\rangle
+    \left(
+      g^{\alpha\rho}g^{\beta\sigma}
+      -
+      g^{\alpha\sigma}g^{\beta\rho}
+    \right).
+  \]
+  \item The Bessel/radial reduction of the resulting coordinate-space
+  kernels.  This may be done with the Huang--Liu/Azizi style Feynman-parameter
+  representation, or with the direct delta-derivative support method, but the
+  reduction must be self-contained in the coordinate-space derivation.
+  \item The independent implementation of
+  \[
+    G2gg,\qquad
+    G2full=G2c+G2b+G2gg,\qquad
+    pertG2full=pert+G2full.
+  \]
+  \item A decision on the dimension--6 sector: either justify the
+  single-line \(G^3\) truncation for the chosen OPE accuracy, or derive the
+  corresponding open-field coordinate-space \(G^3\) terms.  Only then should
+  the order \(\texttt{totalFull}\) be used for final uncertainty analysis.
+\end{enumerate}
+
+Until these steps are complete, the coordinate-space uncertainty analysis
+should be quoted only for \(\texttt{"pert"}\), e.g.
+\begin{verbatim}
+CoordinateMonteCarloMixingAngleUncertainty[
+  500, $BcCoordinateDefaultUncertaintyRanges, "pert"]
+\end{verbatim}
+The entries \(\texttt{"pertG2local"}\) and \(\texttt{"totalLocal"}\) are useful
+diagnostics for the size of local condensate insertions, but they are not
+independent full-OPE coordinate-space results.
+
+The independent condensate derivation has therefore been moved to the separate
+workbench \texttt{BcMixingCoordinateOPE.wl} and notebook
+\texttt{BcMixingCoordinateOPE.nb}.  These files do not load
+\texttt{BcMixingMomentum.wl}.  Their role is to expose the coordinate-space
+kernels and the required Bessel/Schwinger reduction steps:
+\begin{verbatim}
+Get["BcMixingCoordinateOPE.wl"];
+CoordinateOPEStatus[] // Dataset
+CoordinateOPEG2Status["AA"] // Dataset
+CoordinateOPEG2KernelReport["AA"] // Short
+CoordinateOPEReductionPlan["G2c"] // Dataset
+CoordinateOPEKernelInventory["AA", "G2c"] // Dataset
+CoordinateOPEKernel["AA", "G2c"] // Short
+CoordinateOPEG2ggOpenFieldPropagatorNote[] // Dataset
+CoordinateOPEG2ggContraction[]
+CoordinateOPEKernelInventory["AA", "G2gg"] // Dataset
+CoordinateOPEKernelInventory["AA", "G2full"] // Dataset
+CoordinateOPEKernelReductionTable["AA", "G2full"] // Dataset
+CoordinateOPEKernelBorelTemplate["AA", "G2full"] // Short
+CoordinateOPEExportG2KernelsTeX["AA"]
+\end{verbatim}
+At the kernel level the coordinate-space \(G^2\) sector now contains
+\[
+  G2full=G2c+G2b+G2gg ,
+\]
+where \(G2gg\) is the open-field cross-line contribution obtained from
+\[
+  S_c^{(G)}(-x)S_b^{(G)}(x)
+\]
+and the vacuum contraction of the two background field strengths.  The
+independent Bessel/Schwinger reduction of all dimension--4 \(G^2\) kernels is
+now implemented through the same pole-weight method.  The workbench decomposes
+each projected kernel into
+terms of the form
+\[
+  C_i\,(p\cdot x)^{a_i}(x^2)^{b_i}r^{c_i}
+  K_{\nu_i}(m_c r)K_{\mu_i}(m_b r),
+  \qquad r=\sqrt{-x^2},
+\]
+and attaches a formal Borel template containing the family of
+\(\delta^{(n)}(s-\bar s(x))\) terms.
+
+For each of \(G2c\), \(G2b\), and \(G2gg\), this reduction is performed
+directly in \texttt{BcMixingCoordinateOPE.wl}.  We define the pole weights by
+expanding each reduced term around the physical support,
+\[
+  \Pi^{ij}_{O,i}(s,x)
+  =
+  \sum_{r\geq 1}
+  \frac{C^{ij}_{i,r}(x)}
+       {\left[s-\bar s(x)\right]^r},
+  \qquad
+  \bar s(x)=\frac{m_b^2}{x}+\frac{m_c^2}{1-x}.
+\]
+The corresponding Borel weight used in the numerical integration is
+\[
+  {\cal B}^{ij}_{i,r}(x,M^2)
+  =
+  \frac{(-1)^r}{(r-1)!\,(M^2)^{r-1}}\,
+  C^{ij}_{i,r}(x)\,
+  \exp\!\left[-\frac{\bar s(x)}{M^2}\right].
+\]
+The code check
+\[
+  \sum_{i,r}{\cal B}^{ij}_{i,r}(x,M^2)
+  -
+  {\cal B}^{ij}_{O}(x,M^2)=0,
+  \qquad O\in\{G2c,G2b,G2gg\},
+\]
+returns identically zero for \(AA\), \(AB\), and \(BB\).  This check is
+available as
+\begin{verbatim}
+CoordinateOPEG2PoleWeightCheck @@@
+  Tuples[{{"AA", "AB", "BB"}, {"G2c", "G2b", "G2gg"}}]
+\end{verbatim}
+which returns nine zeros.
+
+Writing \(\bar x=1-x\) and
+\[
+  A(x)=m_b^2\bar x+m_c^2x ,
+\]
+the nonzero \(G2gg\) pole weights are as follows.  For the \(AA\) channel,
+\[
+\begin{array}{c|c|c}
+i&r&C^{AA}_{i,r}(x)\\ \hline
+1&2&-\dfrac{G_2 A(x)}{144\pi^2 x\bar x}\\[4pt]
+2&1&-\dfrac{5G_2}{288\pi^2}\\[4pt]
+2&2& \dfrac{5G_2 A(x)}{288\pi^2 x\bar x}
+\end{array}
+\]
+For the \(AB\) channel,
+\[
+\begin{array}{c|c|c}
+i&r&C^{AB}_{i,r}(x)\\ \hline
+1&1&-\dfrac{G_2m_c}{96(m_b+m_c)\pi^2\bar x}\\[4pt]
+1&2&-\dfrac{G_2m_c A(x)}{96(m_b+m_c)\pi^2\bar x^2x}\\[4pt]
+2&1& \dfrac{G_2m_b}{96(m_b+m_c)\pi^2x}\\[4pt]
+2&2& \dfrac{G_2m_b A(x)}{96(m_b+m_c)\pi^2\bar x x^2}
+\end{array}
+\]
+For the \(BB\) channel,
+\[
+\begin{array}{c|c|c}
+i&r&C^{BB}_{i,r}(x)\\ \hline
+1&1&-\dfrac{G_2m_bm_c}{48(m_b+m_c)^2\pi^2\bar x x}\\[4pt]
+1&2&-\dfrac{G_2m_bm_c A(x)}{48(m_b+m_c)^2\pi^2\bar x^2x^2}\\[4pt]
+2&1& \dfrac{G_2 A(x)}{72(m_b+m_c)^2\pi^2\bar x x}\\[4pt]
+2&2& \dfrac{G_2 A(x)^2}{72(m_b+m_c)^2\pi^2\bar x^2x^2}\\[4pt]
+3&2&-\dfrac{G_2 A(x)^2}{288(m_b+m_c)^2\pi^2\bar x^2x^2}
+\end{array}
+\]
+These are the explicit coordinate-space \(W_{i,n}(x)\)-type weights for the
+open-field \(G2gg\) term in the pole convention above.  The single-line
+weights \(G2c\) and \(G2b\) are generated by the same function
+\texttt{CoordinateOPEG2PoleWeights[channel, order]} and are checked by the
+same zero-residual test.  Thus the full dimension--4 coordinate-space
+combination
+\[
+  G2full=G2c+G2b+G2gg
+\]
+is now numerically available in the independent coordinate-space workbench.
+
+At the central numerical point \(M^2=8.0~\mathrm{GeV}^2\) and
+\(s_0=54.0~\mathrm{GeV}^2\), the independent dimension--4 Borel moments are
+\[
+\begin{array}{c|rrrr}
+ &G2c&G2b&G2gg&G2full\\ \hline
+AA&
+1.16680219\times10^{-3}&
+2.77262067\times10^{-4}&
+5.15802955\times10^{-5}&
+1.49564455\times10^{-3}\\
+AB&
+1.10755754\times10^{-3}&
+-3.36506716\times10^{-4}&
+4.26195485\times10^{-6}&
+7.75312778\times10^{-4}\\
+BB&
+1.37364426\times10^{-3}&
+3.15779799\times10^{-4}&
+-3.22250025\times10^{-5}&
+1.65719906\times10^{-3}
+\end{array}
+\]
+The full \(G2full\) correction shifts the perturbative coordinate-space mixing
+angle from
+\[
+  \theta_{\rm pert}=43.28944793^\circ
+  \quad\text{to}\quad
+  \theta_{\rm pert+G2full}=43.31873333^\circ,
+\]
+namely
+\[
+  \Delta\theta_{G2full}=+0.02928540^\circ .
+\]
+The open-field part alone gives
+\(\theta_{\rm pert+G2gg}=43.25439835^\circ\), i.e.
+\(\Delta\theta_{G2gg}=-0.03504958^\circ\).  Before these coordinate-space
+\(G^2\) numbers are used as paper-final, the overall sign and normalization
+convention of the coordinate-space Schwinger/Fourier phase should still be
+checked by hand against one channel.
+
+The single-line dimension--6 contribution is implemented as
+\[
+  G3full=G3c+G3b,
+\]
+with no open-field cross-line dimension--6 terms included.  At the same
+central point,
+\[
+\begin{array}{c|rrr}
+ &G3c&G3b&G3full\\ \hline
+AA&
+5.32974195\times10^{-4}&
+2.18319388\times10^{-5}&
+5.54806134\times10^{-4}\\
+AB&
+4.80354418\times10^{-4}&
+-1.89557393\times10^{-5}&
+4.61398678\times10^{-4}\\
+BB&
+3.87388600\times10^{-4}&
+1.55681046\times10^{-5}&
+4.02956705\times10^{-4}
+\end{array}
+\]
+The single-line \(G^3\) correction changes the angle from
+\[
+  \theta_{\rm pert+G2full}=43.31873333^\circ
+  \quad\text{to}\quad
+  \theta_{\rm totalFull}=43.22988065^\circ,
+\]
+so
+\[
+  \Delta\theta_{G3}=-0.08885268^\circ .
+\]
+At this point \(G^2/\mathrm{pert}\) is roughly \(2\%\)--\(4\%\), while
+\(G^3/\mathrm{pert}\) is roughly \(1\%\) in the three projected channels.
+
+The current workbench also records the bookkeeping needed for that reduction.
+For each Bessel factor one uses the canonical Schwinger identity for
+\(K_\nu(mr)/r^\nu\).  Therefore a term with total Bessel order
+\(\nu_i+\mu_i\) requires the canonical radial power
+\(-(\nu_i+\mu_i)\).  Any leftover power
+\[
+  c_i+(\nu_i+\mu_i)
+\]
+is shown explicitly.  If this residual is a non-negative even integer it can be
+generated by differentiating the Gaussian Fourier integral with respect to the
+Gaussian scale.  If it is not, the term is flagged for a separate radial
+reduction or integration-by-parts step before numerical use.  This is the point
+where most sign and dimension mistakes are expected, so it is intentionally
+kept visible in the notebook output.
+
+The Gaussian derivative bookkeeping is checked in two independent ways.  The
+working pole weights use ordinary Mathematica differentiation of the scalar
+source representation
+\[
+  A^{-2}\exp\!\left[-\frac{J^2}{4A}\right],
+\]
+where \((p\cdot x)^a\) is generated by \((1/i)^a(p\cdot\partial_J)^a\) and
+\((x^2)^b\) by \(b\) scale or source-Laplacian insertions.  The file
+\texttt{BcMixingCoordinateOPE.wl} now also contains the FeynCalc audit
+\begin{verbatim}
+CoordinateOPEFeynCalcGaussianMultiplierReport[]
+\end{verbatim}
+which recomputes the same multipliers with
+\texttt{FourDivergence} and \texttt{FourLaplacian}.  For the power pairs used
+in the dimension--4 and single-line dimension--6 coordinate-space kernels, the
+reported difference between the Mathematica-\texttt{D} multiplier and the
+FeynCalc multiplier is zero after setting \(D=4\).  This check verifies the
+Lorentz derivative algebra; it is separate from the remaining global
+coordinate-space phase, sign, and normalization audit.
+
+The order of completion should be
+\[
+  G2c,\quad G2b,\quad G2gg,\quad
+  G2full=G2c+G2b+G2gg,\quad
+  pertG2full=pert+G2full .
+\]
+The workbench performs this bookkeeping for the three channels needed in the
+mixing-angle extraction,
+\[
+  AA,\qquad AB,\qquad BB ,
+\]
+through \texttt{CoordinateOPEG2CompletionReport[]} and
+\texttt{CoordinateOPEG2ReductionWorkbook[]}.  The canonical dimension--4 and
+single-line dimension--6 condensate weights are now generated directly by
+\begin{verbatim}
+CoordinateOPEG2PoleWeights[channel, order]
+CoordinateOPEG3PoleWeights[channel, order]
+\end{verbatim}
+and checked through the zero-residual pole-weight tests.  The manual
+\texttt{CoordinateOPEInstallWeight} path is retained only for future
+noncanonical kernels.  The public numerical functions
+\begin{verbatim}
+CoordinateOPEBorelMoment[channel, order, M2, s0]
+CoordinateOPEMixingAngle[M2, s0, order]
+\end{verbatim}
+therefore evaluate \(\texttt{pert}\), \(\texttt{G2full}\),
+\(\texttt{pertG2full}\), \(\texttt{G3full}\), and \(\texttt{totalFull}\)
+directly in the coordinate-space workbench.  The remaining physics task is to
+audit the shared sign and normalization convention and to decide whether the
+single-line \(G^3\) truncation is sufficient, or whether open-field
+dimension--6 terms must be derived separately.
+
+\subsection{Coordinate-space OPE hierarchy scan}
+
+The coordinate-space OPE hierarchy is scanned with
+\begin{verbatim}
+coordinateOPEConvergence =
+  CoordinateOPEConvergenceScan[{7.0, 9.0, 3}, {53.0, 55.0, 3}];
+
+CoordinateOPEExportConvergenceCSV[
+  coordinateOPEConvergence,
+  "BcMixingCoordinateOPEConvergence_WangWindow.csv"]
+\end{verbatim}
+The scan covers \(M^2=\{7,8,9\}~\mathrm{GeV}^2\) and
+\(s_0=\{53,54,55\}~\mathrm{GeV}^2\).  The output table contains the signed
+channel ratios
+\[
+  \frac{\Pi_{G^2}^{ij}}{\Pi_{\rm pert}^{ij}},
+  \qquad
+  \frac{\Pi_{G^3}^{ij}}{\Pi_{\rm pert}^{ij}},
+  \qquad ij=AA,AB,BB,
+\]
+their maximum absolute values over the three channels, and the corresponding
+mixing angles \(\theta_{\rm pert}\), \(\theta_{\rm pert+G2full}\), and
+\(\theta_{\rm totalFull}\).
+
+The corresponding coordinate-space paper-facing decomposition plot is
+generated by
+\begin{verbatim}
+coordinateAziziThetaOrderM2 =
+  CoordinateOPEMixingAngleOrderM2PublicationPlot[
+    $BcCoordinateWangWindow["M2Range"],
+    53.0,
+    {"pert", "pertG2full", "totalFull"},
+    $BcCoordinateDefaultParameters,
+    "NPoints" -> 25,
+    "YHalfWidth" -> 1.0
+  ];
+\end{verbatim}
+and the coordinate-space OPE hierarchy diagnostic is
+\begin{verbatim}
+coordinateAziziRatioM2 =
+  CoordinateOPEContributionRatioM2PublicationPlot[
+    $BcCoordinateWangWindow["M2Range"],
+    53.0,
+    $BcCoordinateDefaultParameters,
+    "NPoints" -> 25,
+    "UseAbs" -> True
+  ];
+\end{verbatim}
+The latter plots
+\(|\Pi_{G^2}^{ij}/\Pi_{\rm pert}^{ij}|\) and
+\(|\Pi_{G^3}^{ij}/\Pi_{\rm pert}^{ij}|\) for \(ij=AA,AB,BB\).  The \(G^3\)
+entry is the single-line \(G3c+G3b\) contribution; no open-field
+dimension--6 cross-line terms are included.  The older grouped bar-chart
+helper,
+\begin{verbatim}
+CoordinateOPEContributionBarChart[
+  m2Test, s0Test,
+  $BcCoordinateDefaultParameters,
+  "Normalization" -> "OverPert"]
+\end{verbatim}
+is kept only for quick checks, not as the preferred paper plot.
+
+At the central Wang-window point,
+\[
+  M^2=8.0~\mathrm{GeV}^2,\qquad s_0=54.0~\mathrm{GeV}^2,
+\]
+the maximum absolute channel ratios are
+\[
+  \max_{ij}\left|
+    \frac{\Pi_{G^2}^{ij}}{\Pi_{\rm pert}^{ij}}
+  \right|
+  =
+  0.0384560963,
+  \qquad
+  \max_{ij}\left|
+    \frac{\Pi_{G^3}^{ij}}{\Pi_{\rm pert}^{ij}}
+  \right|
+  =
+  0.0134375395.
+\]
+Thus the independent coordinate-space condensate corrections are smaller than
+the perturbative contribution at the central point.  The corresponding angles
+are
+\[
+  \theta_{\rm pert}=43.2894479279^\circ,\qquad
+  \theta_{\rm pert+G2full}=43.3187333275^\circ,\qquad
+  \theta_{\rm totalFull}=43.2298806499^\circ.
+\]
+
+On the \(3\times3\) Wang-window grid the largest observed ratios are
+\[
+  \max_{\rm grid,ij}\left|
+    \frac{\Pi_{G^2}^{ij}}{\Pi_{\rm pert}^{ij}}
+  \right|
+  =
+  0.0856492483,
+  \qquad
+  \max_{\rm grid,ij}\left|
+    \frac{\Pi_{G^3}^{ij}}{\Pi_{\rm pert}^{ij}}
+  \right|
+  =
+  0.0294634786.
+\]
+Both ratios decrease as \(M^2\) is increased from
+\(7\) to \(9~\mathrm{GeV}^2\).  This is the expected OPE hierarchy pattern for
+the tested window.  Before quoting these numbers as paper-final, the global
+coordinate-space sign and normalization audit should still be completed, and
+the single-line \(G^3\) truncation should be stated explicitly.
+
+\subsection{Independent direct-coordinate route}
+
+The file \texttt{BcMixingCoordinateDirect.wl} gives a second coordinate-space
+calculation of the perturbative part.  It avoids the Azizi et al. Borel
+continuum machinery and instead uses the direct support structure
+\[
+  \delta\!\left(s-\bar s(x)\right)
+  \rightarrow
+  \Theta\!\left(s-(m_b+m_c)^2\right)
+  \sum_{x=x_\pm(s)}
+  \frac{1}{|\bar s'(x)|}.
+\]
+The notebook \texttt{BcMixingCoordinateDirect.nb} loads only the direct file in
+its main workflow.  Its Monte Carlo uncertainty uses
+\texttt{DirectMonteCarloMixingAngleUncertainty}, not the momentum-space Monte
+Carlo engine.  As with the standard coordinate-space file, full \(G^2\) and
+\(G^3\) direct-coordinate OPE terms remain pending and should not be filled by
+momentum-space values.
 
 \section{Checklist for independent verification}
 
@@ -1634,10 +2683,12 @@ A theorist can check the calculation in the following order:
   is sufficient, or whether cross-line open-field $G^3$ terms must be added.
   \item Check that $\Pi_{G^2}/\Pi_{\rm pert}$ and
   $\Pi_{G^3}/\Pi_{\rm pert}$ remain small in the accepted Borel window.
-  \item Use the $K_{ij}$ sensitivity model only as an estimate of possible
-  channel-dependent perturbative $O(\alpha_s)$ uncertainty.
-  \item Derive the true $O(\alpha_s)$ two-loop perturbative spectral
-  densities separately.
+  \item Use the $K_{ij}$ model only to study how channel-dependent
+  perturbative corrections propagate into the angle; do not interpret it as
+  a probability distribution or a replacement for the NLO calculation.
+  \item The true \(AA\) coefficient is now independently derived and tested.
+  Derive the \(AB\) and \(BB\) two-loop perturbative spectral densities
+  separately before quoting an NLO mixing angle.
   \item Determine the final working window using OPE convergence, Borel
   stability, and pole-dominance criteria.
 \end{enumerate}

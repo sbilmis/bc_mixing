@@ -1,0 +1,709 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=2.4cm]{geometry}
+\usepackage{amsmath,amssymb,bm}
+\usepackage{slashed}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+
+\hypersetup{colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue}
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  columns=fullflexible
+}
+
+\newcommand{\as}{\alpha_s}
+\newcommand{\MSbar}{\overline{\mathrm{MS}}}
+\newcommand{\slashedp}{\slashed{p}}
+
+\title{Independent \(O(\alpha_s)\) Calculation for the \(B_c\) Axial Current\\
+Lecture Notes, Validation Tests, and Current Audit Status}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+These notes describe the momentum-space calculation of the perturbative
+\(O(\alpha_s)\) correction to the axial-current correlator used in the
+\(B_c\) mixing analysis.  The purpose is twofold: to give a derivation that a
+graduate student can reproduce and to expose every convention needed for an
+independent theoretical check.  The leading-order, soft, ultraviolet-pole,
+infrared-pole, equal-mass form-factor, scale-cancellation, and small-mass
+checks pass.  Two normalization errors in an earlier provisional result are
+identified explicitly: the Package-X epsilon-bar symbol was inverted, and
+the \(O(\epsilon)\) difference between the \(D\)-dimensional and
+four-dimensional projected Born traces was omitted.  After correcting both,
+the independent axial coefficient reproduces the known equal-mass result and
+has a smooth massless limit.  Numerical results are quoted separately in an
+on-shell diagnostic convention and in a common-scale \(\MSbar\) convention.
+\end{abstract}
+
+\tableofcontents
+
+\section{Physics goal and conventions}
+
+The axial current is
+\begin{equation}
+ J_\mu^A(x)=\bar b(x)\gamma_\mu\gamma_5 c(x),
+\end{equation}
+and the two-point function is
+\begin{equation}
+ \Pi_{\mu\nu}^{AA}(p)
+ =i\int d^4x\,e^{ip\cdot x}
+ \langle0|T\{J_\mu^A(x)J_\nu^{A\dagger}(0)\}|0\rangle .
+\end{equation}
+We decompose
+\begin{equation}
+ \Pi_{\mu\nu}^{AA}(p)
+ =\left(g_{\mu\nu}-\frac{p_\mu p_\nu}{p^2}\right)\Pi_1^{AA}(p^2)
+ +\frac{p_\mu p_\nu}{p^2}\Pi_0^{AA}(p^2)
+\end{equation}
+and project with
+\begin{equation}
+ P_1^{\mu\nu}
+ =\frac{1}{3}\left(g^{\mu\nu}-\frac{p^\mu p^\nu}{p^2}\right)
+\end{equation}
+in four dimensions.  In the virtual loop, the projector must instead be
+\begin{equation}
+ P_{1,D}^{\mu\nu}
+ =\frac{1}{D-1}\left(g_D^{\mu\nu}
+ -\frac{p^\mu p^\nu}{p^2}\right),\qquad D=4-2\epsilon .
+\end{equation}
+
+The perturbative spectral density is defined by
+\begin{equation}
+ \rho_{\rm pert}^{AA}(s)
+ =\rho_0^{AA}(s)+\frac{\as}{\pi}\rho_1^{AA}(s)+O(\as^2).
+\end{equation}
+Thus \(\rho_1\) never contains the explicit factor \(\as/\pi\).
+
+\section{Leading-order cut}
+
+For the cut state \(c(p_c)\bar b(p_b)\), \(p=p_c+p_b\), the spin sum is
+\begin{equation}
+ T_{\mu\nu}^{(0)}
+ =\mathrm{Tr}\left[
+ (\slashed p_c+m_c)\gamma_\mu\gamma_5
+ (\slashed p_b-m_b)\gamma_\nu\gamma_5
+ \right].
+\end{equation}
+The on-shell relations are
+\begin{equation}
+ p_c^2=m_c^2,\qquad p_b^2=m_b^2,\qquad
+ 2p_c\cdot p_b=s-m_c^2-m_b^2.
+\end{equation}
+The two-body phase-space factor is proportional to
+\begin{equation}
+ \frac{\sqrt{\lambda(s,m_b^2,m_c^2)}}{s},\qquad
+ \lambda(s,m_b^2,m_c^2)
+ =[s-(m_b+m_c)^2][s-(m_b-m_c)^2].
+\end{equation}
+In the normalization of the momentum-space mixing code,
+\begin{equation}
+ \rho_0^{AA}(s)
+ =\frac{N_c}{16\pi^2}\frac{\sqrt{\lambda}}{s}
+ \,\mathcal N_{AA}(s).
+\end{equation}
+The independently evaluated trace agrees algebraically with
+\texttt{PerturbativeSpectralDensity["AA",s]}:
+\begin{lstlisting}[language=Mathematica]
+IndependentAALODerivationCheck[s]["Difference"]
+(* 0 *)
+\end{lstlisting}
+
+\section{NLO decomposition}
+
+The inclusive correction is divided into
+\begin{equation}
+ \rho_1^{AA}
+ =\rho_{1,V}^{AA}
+ +\rho_{1,R-D}^{AA}
+ +\rho_{1,I}^{AA},
+\end{equation}
+where \(V\) is the renormalized virtual correction, \(R-D\) is the exact
+three-body real contribution minus local dipoles, and \(I\) is the integrated
+dipole insertion.  The individual terms depend on subtraction conventions;
+only their sum is physical.
+
+\section{Virtual correction}
+
+\subsection{Loop amplitude}
+
+With loop momentum \(\ell\), the vertex denominators are represented by
+\begin{equation}
+ \frac{1}{
+ \ell^2\big[(\ell+p_c)^2-m_c^2\big]
+ \big[(\ell-p_b)^2-m_b^2\big]} .
+\end{equation}
+The numerator is traced in \(D\) dimensions.  In FeynCalc this requires
+\texttt{GAD}, \texttt{GSD}, \texttt{MTD}, and \texttt{FVD}; performing a
+four-dimensional trace and applying \texttt{ChangeDimension} afterward is
+not equivalent because \(O(\epsilon)\) numerator terms can multiply
+\(1/\epsilon\) poles.
+
+There are two nonsinglet \(\gamma_5\) matrices.  They are anticommuted
+together before the trace is continued to \(D\) dimensions.  Thus no
+four-dimensional \(\gamma_5\) object is mixed with a \(D\)-dimensional gamma
+chain.  The corresponding four-dimensional identity is checked by
+\begin{lstlisting}[language=Mathematica]
+IndependentAALOGamma5EliminationCheck[]
+(* 0 *)
+\end{lstlisting}
+
+The tensor integrals are reduced with
+\begin{equation}
+ \texttt{TID}\longrightarrow\texttt{ToPaVe}
+ \longrightarrow\texttt{PaXEvaluateUVIRSplit}.
+\end{equation}
+The physical loop measure \(d^D\ell/(2\pi)^D\) is supplied through
+\texttt{PaXImplicitPrefactor}.
+
+\subsection{Epsilon-bar convention and projected Born normalization}
+
+FeynHelpers defines
+\begin{equation}
+ \frac{1}{\texttt{PaXEpsilonBar}}
+ =\frac{1}{\epsilon}-\gamma_E+\ln(4\pi).
+\end{equation}
+Therefore the Laurent-series substitution is
+\(\texttt{PaXEpsilonBar}\to z\), not \(1/z\).  Reversing this substitution
+was the dominant error in the superseded \(+3\%\) result.
+
+The second necessary correction follows from the projected Born trace.  The
+ratio between the \(D\)-dimensional gamma-five-free trace and the
+four-dimensional trace is
+\begin{equation}
+ \frac{B_D}{B_4}
+ =1+\epsilon\,
+ \frac{2[(m_b-m_c)^2-s]}
+ {3(m_b-m_c)^2+6s}+O(\epsilon^2).
+\end{equation}
+For equal masses this becomes \(1-\epsilon/3\).  Since the virtual graph
+contains \(1/\epsilon\) poles, this apparently evanescent factor changes the
+finite result.  The loop is consequently multiplied by \(B_4/B_D\) before
+the finite part is extracted.
+
+\subsection{On-shell field counterterm}
+
+For the coefficient of \(\as/(4\pi)\),
+\begin{equation}
+ \delta Z_{2,Q}^{\rm OS}
+ =-C_F\left[
+ \frac{1}{\epsilon_{\rm UV}}
+ +\frac{2}{\epsilon_{\rm IR}}
+ +4+3\ln\frac{\mu^2}{m_Q^2}
+ \right].
+\end{equation}
+The interference of the two external-field factors with the Born amplitude
+gives
+\begin{equation}
+ \rho_{1,\rm field}^{AA}
+ =\frac14\left(\delta Z_{2,b}^{\rm OS}
+ +\delta Z_{2,c}^{\rm OS}\right)\rho_0^{AA}.
+\end{equation}
+The factor \(1/4\) converts the \(\as/(4\pi)\) convention into the
+\(\as/\pi\) convention.
+
+\section{Real-gluon emission}
+
+For
+\begin{equation}
+ J_A\longrightarrow c(p_c)+\bar b(p_b)+g(k),
+\end{equation}
+define
+\begin{equation}
+ u=2p_c\cdot k,\qquad v=2p_b\cdot k,\qquad
+ t=(p_c+p_b)^2=s-u-v.
+\end{equation}
+The two emission chains are
+\begin{align}
+ {\cal M}_c^\alpha&=
+ \gamma^\alpha
+ \frac{\slashed p_c+\slashed k+m_c}{u}
+ \gamma_\mu\gamma_5,\\
+ {\cal M}_{\bar b}^\alpha&=
+ \gamma_\mu\gamma_5
+ \frac{-\slashed p_b-\slashed k+m_b}{v}
+ \gamma^\alpha.
+\end{align}
+Their sum obeys the soft theorem.  The three-body measure after integrating
+the overall orientation is
+\begin{equation}
+ d\Phi_3=\frac{dt\,du}{128\pi^3s}.
+\end{equation}
+The spectral density includes the optical-theorem factor \(1/(2\pi)\).
+
+At fixed \(t\),
+\begin{equation}
+ u_\pm(t)=\frac{s-t}{2t}
+ \left[t+m_c^2-m_b^2
+ \pm\sqrt{\lambda(t,m_b^2,m_c^2)}\right].
+\end{equation}
+
+\section{Local massive dipoles}
+
+For a massive emitter \(Q\), emitted gluon \(g\), and massive spectator \(k\),
+the Catani--Dittmaier--Seymour--Trocsanyi dipole has the form
+\begin{equation}
+ D_{gQ,k}
+ =\frac{1}{2p_g\cdot p_Q}
+ \langle V_{gQ,k}\rangle |{\cal M}_0(\widetilde p_Q,\widetilde p_k)|^2 .
+\end{equation}
+The local subtraction was checked analytically:
+\begin{lstlisting}[language=Mathematica]
+IndependentAADipoleSoftCancellationCheck[s,yAA]["CancelsQ"]
+(* True *)
+\end{lstlisting}
+This is necessary but not sufficient: the quasi-collinear and integrated
+finite limits must also be checked.
+
+\section{Complete integrated insertion}
+
+A key lesson from the audit is that the individual integrated dipole
+\(I_{gQ,k}\) is not by itself the complete finite insertion.  For final-state
+partons, the insertion operator is
+\begin{align}
+ {\bf I}_m(\epsilon)
+ =-&\frac{\as}{2\pi}\frac{(4\pi)^\epsilon}{\Gamma(1-\epsilon)}
+ \sum_j\frac{1}{{\bf T}_j^2}\sum_{k\ne j}{\bf T}_j\cdot{\bf T}_k
+ \Bigg[
+ {\bf T}_j^2\left(\frac{\mu^2}{s_{jk}}\right)^\epsilon
+ \left({\cal V}_j-\frac{\pi^2}{3}\right)\nonumber\\
+ &+\Gamma_j+\gamma_j\ln\frac{\mu^2}{s_{jk}}
+ +\gamma_j+K_j
+ \Bigg].
+\end{align}
+For a quark,
+\begin{equation}
+ \gamma_q=\frac32C_F,\qquad
+ K_q=\left(\frac72-\frac{\pi^2}{6}\right)C_F,
+\end{equation}
+and for a massive quark,
+\begin{equation}
+ \Gamma_q(\mu,m_q;\epsilon)
+ =C_F\left[
+ \frac1\epsilon+\frac12\ln\frac{m_q^2}{\mu^2}-2
+ \right].
+\end{equation}
+The functions \({\cal V}^{(S)}\) and \({\cal V}_q^{(NS)}\) are implemented
+from Eqs.\ (6.20) and (6.21) of
+Catani et al., Nucl.\ Phys.\ B627 (2002) 189.
+
+\section{Pole and scale checks}
+
+The following tests currently pass:
+\begin{enumerate}
+ \item The LO cut reproduces the stored spectral density.
+ \item The exact real matrix element reproduces the universal massive soft
+ eikonal factor.
+ \item The virtual UV pole cancels the on-shell field counterterm.
+ \item The real and virtual IR-pole coefficients cancel.
+ \item The derivative of the finite virtual term with respect to
+ \(\ln\mu^2\) equals its IR-pole coefficient.
+\end{enumerate}
+
+The scale-slope test is particularly useful because it checks the dimensional
+prefactor without depending on a published full spectral density.
+
+\section{How to validate a large correction}
+
+A large correction is not disproved by its size alone.  Near a heavy-heavy
+threshold, gluon exchange is enhanced by the small relative velocity.
+Nevertheless, a large result requires more tests than a small one.  It is
+useful to organize them in three levels.
+
+\subsection{Level I: algebraic and numerical identities}
+
+These tests use no external spectral-density formula:
+\begin{enumerate}
+ \item exchange the two masses, \(m_b\leftrightarrow m_c\);
+ \item rescale every dimensional variable;
+ \item change the numerical quadrature order;
+ \item vary the subtraction cutoff or integration variables;
+ \item verify cancellation of the renormalization scale in the complete
+ on-shell coefficient.
+\end{enumerate}
+
+The \(AA\) density has mass dimension two.  Therefore
+\begin{equation}
+ \rho_1(\kappa^2s,\kappa m_b,\kappa m_c,\kappa\mu)
+ =\kappa^2\rho_1(s,m_b,m_c,\mu).
+\end{equation}
+For \(\kappa=2\), the numerical ratio between the left-hand side and the
+right-hand side is \(0.9999988\).  Exchanging \(m_b\) and \(m_c\) changes
+\(\rho_1(s=40\,{\rm GeV}^2)\) by only
+\(1.8\times10^{-14}\).
+
+\subsection{Level II: limits derived directly from QCD}
+
+\paragraph{Threshold or NRQCD limit.}
+For two heavy quarks the appropriate effective description near threshold
+is NRQCD rather than ordinary heavy-light HQET.  Define
+\begin{equation}
+ v_{\rm rel}
+ =\frac{\sqrt{\lambda(s,m_b^2,m_c^2)}}
+ {s-m_b^2-m_c^2}.
+\end{equation}
+Single Coulomb-gluon exchange implies
+\begin{equation}
+ \frac{\rho_1}{\rho_0}
+ =\frac{C_F\pi^2}{v_{\rm rel}}+O(\ln v_{\rm rel},1).
+\end{equation}
+This is the first term in the expansion of the Sommerfeld/Coulomb factor.
+For the physical mass inputs the numerical check is
+\begin{center}
+\begin{tabular}{cccc}
+\toprule
+\(s-s_{\rm th}\,[{\rm GeV}^2]\) & \(v_{\rm rel}\) &
+\(\rho_1/\rho_0\) & \(v_{\rm rel}\rho_1/\rho_0\)\\
+\midrule
+0.10 & 0.13629 & 95.1736 & 12.9711\\
+0.25 & 0.21326 & 60.1795 & 12.8340\\
+0.50 & 0.29653 & 42.6488 & 12.6465\\
+1.00 & 0.40589 & 30.3493 & 12.3186\\
+\bottomrule
+\end{tabular}
+\end{center}
+The limiting expectation is \(C_F\pi^2=13.1595\).  The approach toward this
+number is a strong explanation for the large Borel correction: the Borel
+weight emphasizes the near-threshold region.  It also warns that fixed-order
+perturbation theory may eventually require Coulomb resummation.
+
+\paragraph{High-energy limit.}
+For \(s\gg m_b^2,m_c^2\), both masses become negligible and the nonsinglet
+axial result approaches the massless value
+\begin{equation}
+ \frac{\rho_1}{\rho_0}\longrightarrow1.
+\end{equation}
+For the physical masses, the calculated ratios are
+\begin{equation}
+\begin{array}{c|ccc}
+s\,[{\rm GeV}^2]&100&400&1600\\ \hline
+\rho_1/\rho_0&4.0352&1.9458&1.3035
+\end{array}.
+\end{equation}
+The convergence is slow because the bottom mass is not negligible at the
+first two points, but the sequence approaches one.
+
+\paragraph{Heavy-light limit.}
+Sending one mass to zero while keeping the other fixed provides a different
+check.  Ordinary HQET becomes relevant near the heavy-light threshold.  At
+\(s=40\,{\rm GeV}^2\), \(m_b=4.18\,{\rm GeV}\), and
+\(m_c=1.0,0.5,0.2,0.1,0.05\,{\rm GeV}\), the ratios
+\(\rho_1/\rho_0\) are
+\begin{equation}
+ 8.4611,\quad6.4876,\quad5.6258,\quad5.3519,\quad5.2036.
+\end{equation}
+The sequence is finite and smooth.  A stronger check is to match the exact
+normalization to the known heavy-light correlator of
+Chetyrkin and Steinhauser~\cite{ChetyrkinSteinhauser2001}.  Because their
+published basis is not identical to the present projected axial convention,
+that comparison must be performed at the level of a carefully matched
+spectral density rather than by comparing one number.
+
+\subsection{Level III: independent published calculations}
+
+The following comparisons probe different parts of the result:
+\begin{enumerate}
+ \item Catani et al.~\cite{Catani2002}: massive subtraction and the exact
+ equal-mass virtual form factors.
+ \item Chetyrkin and Steinhauser~\cite{ChetyrkinSteinhauser2001}: the
+ heavy-light, one-massless-quark limit and its HQET threshold expansion.
+ \item Lee, Sang and Kim~\cite{LeeSangKim2010}: unequal-mass
+ \(b\bar c\) current matching in NRQCD, including the one-loop and
+ relativistic expansion.  Their principal application is to S-wave
+ \(B_c\) currents, whereas the transverse axial channel studied here has a
+ P-wave threshold structure.  The comparison is therefore limited to
+ carefully matched Lorentz components and short-distance conventions; it is
+ not a direct spectral-density check.
+ \item Maier and Marquard~\cite{MaierMarquard2011}: high-energy expansions
+ of non-diagonal vector/scalar correlators and diagonal axial correlators.
+ These results test the expected expansion structure, but they are not a
+ published unequal-mass axial formula for the present current.
+ \item Wang~\cite{Wang2013}: a direct unequal-mass NLO spectral-density
+ comparison, treated only as an external check because the local
+ transcription still requires an independent convention audit.
+\end{enumerate}
+
+\subsection{What the old \(K\)-factor model checks}
+
+The earlier diagnostic replaced
+\begin{equation}
+ \Pi_{\rm pert}^{ij}\to
+ \left(1+\frac{\as}{\pi}K_{ij}\right)\Pi_{\rm pert}^{ij}.
+\end{equation}
+It remains useful for propagating hypothetical channel-dependent corrections
+through
+\begin{equation}
+ \tan(2\theta)=
+ \frac{-2\Pi^{AB}}{\Pi^{AA}-\Pi^{BB}}.
+\end{equation}
+If all \(K_{ij}\) are equal, a common correction largely cancels in the
+angle.  If they differ, the angle can move by several degrees.  The scan
+therefore measures the \emph{sensitivity of the angle}; it cannot validate
+\(\rho_1^{AA}(s)\), reproduce threshold logarithms, or assign a statistical
+NLO uncertainty.
+
+\section{Mandatory limiting tests}
+
+\subsection{Massless limit}
+
+For equal masses followed by \(m^2/s\to0\), the transverse nonsinglet axial
+current becomes the massless vector/axial current.  Therefore
+\begin{equation}
+ \frac{\rho_1^{AA}(s)}{\rho_0^{AA}(s)}\longrightarrow1.
+\end{equation}
+At \(s=40\,{\rm GeV}^2\), the corrected numerical sequence is
+\begin{center}
+\begin{tabular}{ccc}
+\toprule
+\(m_b=m_c\) [GeV] & \(\rho_1^{AA}/\rho_0^{AA}\)\\
+\midrule
+0.20 & 1.0831974\\
+0.10 & 1.0249053\\
+0.05 & 1.0072604\\
+\bottomrule
+\end{tabular}
+\end{center}
+which approaches one as required.
+
+\subsection{Equal-mass form factor}
+
+The virtual contribution is checked against the equal-mass form factors in
+Appendix D of Catani et al.  Both \(f_1\) and the finite-mass pure-axial
+\(f_2\) term are included.  At \(s=40\,{\rm GeV}^2\) and
+\(\mu=\sqrt{s}\), the comparison is
+\begin{center}
+\begin{tabular}{cccc}
+\toprule
+\(m\) [GeV] & FeynCalc/Package-X & Catani axial & difference\\
+\midrule
+0.20 & 42.54933479185 & 42.54933479167 & \(1.75\times10^{-10}\)\\
+0.50 & 26.78426097716 & 26.78426097716 & \(-4.71\times10^{-12}\)\\
+1.00 & 18.02429851421 & 18.02429851421 & \(2.49\times10^{-14}\)\\
+\bottomrule
+\end{tabular}
+\end{center}
+This validates the finite virtual normalization independently of the
+unequal-mass literature.
+
+\subsection{Unequal-mass external comparison}
+
+The expressions of Z.-G. Wang, arXiv:1303.4146, may be used only after:
+\begin{enumerate}
+ \item reproducing their LO normalization;
+ \item checking their equal-mass limit analytically rather than substituting
+ directly into formulas containing \((m_1-m_2)^{-1}\);
+ \item checking the massless limit;
+ \item comparing several values of \(s\), not one integrated number.
+\end{enumerate}
+The current local transcription of that formula does not pass all these
+requirements and is not used to construct the result.
+
+\section{Borel transformation}
+
+Once a validated \(\rho_1^{AA}\) is available, its continuum-subtracted
+Borel moment is
+\begin{equation}
+\Pi_{1,\rm NLO}^{AA}(M^2,s_0)
+ =\frac{\as(\mu)}{\pi}
+ \int_{(m_b+m_c)^2}^{s_0}ds\,
+ e^{-s/M^2}\rho_1^{AA}(s,\mu).
+\end{equation}
+For the fixed numerical inputs \(m_b=4.18\,{\rm GeV}\),
+\(m_c=1.27\,{\rm GeV}\), \(\as=0.26\),
+\(M^2=10\,{\rm GeV}^2\), and \(s_0=55\,{\rm GeV}^2\), interpreted only as an
+on-shell-scheme diagnostic, the pointwise decomposition at
+\(s=40\,{\rm GeV}^2\) is
+\begin{equation}
+ \rho_{1,V}=5.6979732,\qquad
+ \rho_{1,I}=-2.2122115,\qquad
+ \rho_{1,R-D}=0.4477501,
+\end{equation}
+so that \(\rho_1^{AA}=3.9335117\).  The LO density is
+\(\rho_0^{AA}=0.3898262\), and the local relative correction
+\((\as/\pi)\rho_1/\rho_0\) is \(0.8351\).
+
+The continuum-subtracted 20-node Borel result is
+\begin{align}
+ \Pi_{\rm LO}^{AA}&=0.1441716826,\\
+ \Pi_{1}^{AA}&=1.3770512496,\\
+ \frac{\as}{\pi}\Pi_{1}^{AA}&=0.1139655469,\\
+ \Pi_{\rm LO+NLO}^{AA}&=0.2581372295.
+\end{align}
+Thus the relative correction is \(0.790485\), or \(79.05\%\).  The 12-node
+and 20-node bare coefficients are \(1.3770552219\) and \(1.3770512496\),
+respectively.  This agreement tests the outer Borel quadrature.
+
+This large correction is not combined with the paper's
+\(\MSbar\) mass inputs, because \(4.18\) and \(1.27\) GeV are normally
+interpreted as \(m_b(m_b)\) and \(m_c(m_c)\), not pole masses.
+
+\section{\(\MSbar\) conversion}
+
+Conversion to running masses uses
+\begin{equation}
+ M_Q=\overline m_Q(\mu)\left[
+ 1+\frac{\as(\mu)}{\pi}
+ \left(\frac43+\ln\frac{\mu^2}{\overline m_Q^2(\mu)}\right)
+ \right],
+\end{equation}
+which implies
+\begin{equation}
+ \rho_{1,\MSbar}^{AA}
+ =\rho_{1,\rm OS}^{AA}
+ +\sum_{Q=b,c}\overline m_Q(\mu)
+ \left(\frac43+\ln\frac{\mu^2}{\overline m_Q^2(\mu)}\right)
+ \frac{\partial\rho_0^{AA}}{\partial m_Q}.
+\end{equation}
+
+Using \(m_b(m_b)=4.18\,{\rm GeV}\), \(m_c(m_c)=1.27\,{\rm GeV}\),
+\(\as(M_Z)=0.1180\), one-loop running, and the common scale
+\(\mu=2.0\,{\rm GeV}\), the parameters are
+\begin{equation}
+ \overline m_b(\mu)=4.6683009\,{\rm GeV},\qquad
+ \overline m_c(\mu)=1.1659209\,{\rm GeV},\qquad
+ \as(\mu)=0.2622100.
+\end{equation}
+The corrected 20-node result is
+\begin{align}
+ \Pi_{\rm LO,\MSbar}^{AA}&=0.0723406411,\\
+ \Pi_{1,\rm OS}^{AA}\big|_{\overline m(\mu)}&=0.7641393212,\\
+ \Pi_{1,\rm conversion}^{AA}&=-0.1431034913,\\
+ \Pi_{1,\MSbar}^{AA}&=0.6210358299,\\
+ \frac{\as(\mu)}{\pi}\Pi_{1,\MSbar}^{AA}&=0.0518341572,\\
+ \Pi_{\rm LO+NLO,\MSbar}^{AA}&=0.1241747983.
+\end{align}
+The relative NLO correction is \(71.65\%\).  Varying the common scale gives
+\begin{center}
+\begin{tabular}{cccc}
+\toprule
+\(\mu\) [GeV] & \(\Pi_{\rm LO}^{AA}\) &
+\((\as/\pi)\Pi_1^{AA}\) & \(\Pi_{\rm LO+NLO}^{AA}\)\\
+\midrule
+1.8 & 0.05866679 & 0.05981541 & 0.11848220\\
+2.0 & 0.07234064 & 0.05183386 & 0.12417450\\
+2.2 & 0.08587655 & 0.04205294 & 0.12792949\\
+\bottomrule
+\end{tabular}
+\end{center}
+The central value should therefore be quoted with a renormalization-scale
+band.  The fixed-input on-shell and common-scale \(\MSbar\) numbers answer
+different scheme questions and must not be added to each other.
+
+\section{Reproducible Mathematica audit}
+
+\begin{lstlisting}[language=Mathematica]
+Get["BcMixingAlphaS.wl"];
+
+IndependentAALODerivationCheck[s]["Difference"]
+IndependentAARealEmissionSoftTheoremCheck[s,yAA]["Difference"]
+IndependentAAUVPoleCancellationCheck[
+  s,l,FeynCalc`PaXC0Expand->True
+]["CancelsQ"]
+IndependentAAIRPoleCancellationCheck[40.0][
+  "CancelsNumericallyQ"
+]
+
+IndependentAAEqualMassVirtualBenchmarkReport[
+  40,1/5,Sqrt[40]
+]["PassesFiniteBenchmarkQ"]
+
+IndependentAAThresholdCoulombCheck[
+  {0.1,0.25,0.5,1.0},
+  $BcMixingDefaultParameters,
+  AccuracyGoal->5,PrecisionGoal->5,MaxRecursion->10
+]
+
+IndependentAAHighEnergyLimitCheck[
+  {100.,400.,1600.},
+  $BcMixingDefaultParameters,
+  AccuracyGoal->5,PrecisionGoal->5,MaxRecursion->10
+]
+
+IndependentAAMassExchangeSymmetryCheck[
+  40.,$BcMixingDefaultParameters,
+  AccuracyGoal->5,PrecisionGoal->5,MaxRecursion->10
+]
+
+IndependentAADimensionalScalingCheck[
+  40.,2.,$BcMixingDefaultParameters,
+  AccuracyGoal->5,PrecisionGoal->5,MaxRecursion->10
+]
+
+aaOS = IndependentAAFinalNLOBorelSummary[
+  10.0,55.0,$BcMixingDefaultParameters,
+  "NPoints"->20,"Progress"->False,
+  AccuracyGoal->5,PrecisionGoal->5,MaxRecursion->10
+];
+
+aaMSbar = IndependentAAFinalNLOBorelMSbarSummary[
+  10.0,55.0,2.0,
+  $BcAlphaSMSbarDefaults,$BcMixingDefaultParameters,
+  "NPoints"->20,"Progress"->False,
+  AccuracyGoal->5,PrecisionGoal->5,MaxRecursion->10
+];
+\end{lstlisting}
+
+\section{Current conclusion}
+
+\begin{itemize}
+ \item The original LO plus \(G^2\) and \(G^3\) mixing analysis is not
+ invalidated by this audit.
+ \item The provisional \(+3\%\) AA correction is withdrawn.  It resulted
+ from reversing the epsilon-bar substitution and omitting the
+ \(B_4/B_D\) normalization.
+ \item The corrected independent AA coefficient passes the equal-mass
+ virtual benchmark, ultraviolet and infrared cancellation, scale
+ cancellation, quadrature convergence, and the massless inclusive limit.
+ \item At the test point, the correction is large: approximately \(79\%\)
+ in the fixed-input on-shell diagnostic and \(72\%\) in the common-scale
+ \(\MSbar\) calculation at \(\mu=2\) GeV.
+ \item This is the correction to the \(AA\) moment, not yet to the mixing
+ angle.  A consistent NLO mixing angle requires independent \(AB\) and
+ \(BB\) coefficients, where cancellations in the angle formula may reduce
+ or enhance the final shift.
+\end{itemize}
+
+\begin{thebibliography}{9}
+\bibitem{Catani2002}
+S.~Catani, S.~Dittmaier, M.~H.~Seymour and Z.~Trocsanyi,
+Nucl.\ Phys.\ B \textbf{627} (2002) 189,
+\href{https://arxiv.org/abs/hep-ph/0201036}{arXiv:hep-ph/0201036}.
+
+\bibitem{Wang2013}
+Z.-G.~Wang,
+\emph{Next-to-leading order perturbative contributions in the QCD sum rules
+for mesonic two-point correlation functions with unequal quark masses},
+\href{https://arxiv.org/abs/1303.4146}{arXiv:1303.4146}.
+
+\bibitem{RunDec}
+K.~G.~Chetyrkin, J.~H.~K\"uhn and M.~Steinhauser,
+Comput.\ Phys.\ Commun.\ \textbf{133} (2000) 43,
+\href{https://arxiv.org/abs/hep-ph/0004189}{arXiv:hep-ph/0004189}.
+
+\bibitem{ChetyrkinSteinhauser2001}
+K.~G.~Chetyrkin and M.~Steinhauser,
+\emph{Heavy-light current correlators at order \(\alpha_s^2\) in QCD and
+HQET},
+\href{https://arxiv.org/abs/hep-ph/0108017}{arXiv:hep-ph/0108017}.
+
+\bibitem{LeeSangKim2010}
+J.~Lee, W.~Sang and S.~Kim,
+\emph{Relativistic corrections to the axial vector and vector currents in
+the \(\bar b c\) meson system at order \(\alpha_s\)},
+\href{https://arxiv.org/abs/1011.2274}{arXiv:1011.2274}.
+
+\bibitem{MaierMarquard2011}
+A.~Maier and P.~Marquard,
+\emph{Low- and high-energy expansion of heavy-quark correlators at
+next-to-next-to-leading order},
+\href{https://arxiv.org/abs/1110.5581}{arXiv:1110.5581}.
+\end{thebibliography}
+
+\end{document}

@@ -63,6 +63,23 @@
          importing the spectral densities from the projected Feynman-parameter
          expressions.  This keeps the FeynCalc algebra and numerical sum-rule
          stage cleanly separated.
+
+    How to read this file:
+      The code follows the calculation in the same order as the paper:
+
+        1. Define symbols, channels and default numerical inputs.
+        2. Define the two currents and the heavy-quark propagator pieces.
+        3. Build loop integrands for each OPE order and channel.
+        4. Project the correlator onto the spin-1 invariant amplitude.
+        5. Install perturbative spectral densities and direct Borel
+           integrands for condensate terms.
+        6. Evaluate Pi_AA, Pi_AB, Pi_BB and form the mixing angle.
+        7. Provide scan, plot and Monte Carlo wrappers for the notebook.
+
+      Most user-facing functions are near the end of their section.  For
+      example, NumericMixingAngleDegrees is the main numerical angle function,
+      while MixingAngleStabilityM2PublicationPlot and
+      MonteCarloMixingAngleUncertainty are notebook-level helpers.
 *)
 
 ClearAll["Global`*"];
@@ -94,6 +111,10 @@ If[NameQ["FeynCalc`FCSetDiracGammaScheme"],
 (* Global symbols and defaults                                             *)
 (* ---------------------------------------------------------------------- *)
 
+(* This section contains the "knobs" of the calculation.  Symbols such as mb,
+   mc, M2 and s0 are kept symbolic for algebraic work, while the associations
+   below store the numerical values used by the notebook. *)
+
 ClearAll[
   mb, mc, M2, s0, s, G2, G3, alphaS, eps,
   k, p, mu, nu, al, be, rh, si, x, z, xi
@@ -103,6 +124,10 @@ $BcMixingNc = 3;
 $BcMixingKeepRawTensorI = True;
 $BcMixingDirectBorelPhase = -I;
 $BcMixingG2BorelPhase = $BcMixingDirectBorelPhase;
+
+(* Channel labels:
+   AA means current A at both vertices, AB means A at the first vertex and B
+   at the second, etc.  These labels are used everywhere in the file. *)
 $BcMixingChannels = <|
   "AA" -> {"A", "A"},
   "AB" -> {"A", "B"},
@@ -113,6 +138,8 @@ $BcMixingChannels = <|
 $BcMixingOrders = {"pert", "G2c", "G2b", "G2gg", "G2", "pertG2", "G3c", "G3b", "G3", "total"};
 $BcMixingSpectralDensities = <||>;
 
+(* Central input values.  The notebook can override these by passing a
+   parameter association, e.g. <|"M2" -> 8., "s0" -> 54.|>. *)
 $BcMixingDefaultParameters = <|
   "mb" -> 4.18,
   "mc" -> 1.27,
@@ -141,6 +168,9 @@ $Assumptions =
 
 ClearBcMixingCache[] := Null;
 
+(* Convert parameter associations to replacement rules.  DynamicParameterRules
+   intentionally drops M2 and s0 because many numerical routines set them
+   point-by-point. *)
 MergeDefaultParameters[assoc_: <||>] := Join[$BcMixingDefaultParameters, assoc];
 
 ParameterRules[assoc_: $BcMixingDefaultParameters] := Module[
@@ -155,6 +185,9 @@ ParameterRules[assoc_: $BcMixingDefaultParameters] := Module[
     s0 -> merged["s0"]
   }
 ];
+
+DynamicParameterRules[assoc_: $BcMixingDefaultParameters] :=
+  DeleteCases[ParameterRules[assoc], (M2 -> _) | (s0 -> _)];
 
 BcThreshold[] := (mb + mc)^2;
 
@@ -176,6 +209,16 @@ CheckEnvironment[] := <|
 (* ---------------------------------------------------------------------- *)
 (* Vertices and propagator pieces                                          *)
 (* ---------------------------------------------------------------------- *)
+
+(* This section encodes the physics ingredients before loop integration.
+   FeynCalc notation:
+     GA[mu]  = gamma_mu
+     GA[5]   = gamma_5
+     GS[k]   = slash(k)
+     SP[k,k] = k^2
+     FAD[{k,m,n}] = 1/(k^2 - m^2)^n
+   The functions ending in Num give numerator factors; Den gives denominator
+   factors. *)
 
 ValidateChannel[channel_String] := If[
   KeyExistsQ[$BcMixingChannels, channel],
@@ -229,6 +272,9 @@ CheckMixingMassDimensions[normalized_: True] := Module[
 
 CurrentVertex["A", lor_] := GA[lor] . GA[5];
 
+(* Tensor current B.  The normalization 1/(mb+mc) makes A and B currents have
+   the same mass dimension.  The optional raw I is the explicit i in the
+   current definition. *)
 CurrentVertex["B", lor_] := Module[
   {phase = If[TrueQ[$BcMixingKeepRawTensorI], I, 1]},
   phase TensorCurrentNormalization[] (DiracSigma[GA[lor], GS[p]] . GA[5])
@@ -237,6 +283,8 @@ CurrentVertex["B", lor_] := Module[
 S0Num[q_, m_] := GS[q] + m;
 S0Den[q_, m_] := FAD[{q, m}];
 
+(* One-gluon open-field propagator numerator.  The Lorentz indices a,b are
+   kept open until the G2gg cross-line vacuum tensor contracts them. *)
 SGNum[q_, m_, a_, b_] :=
   -1/4 (
     DiracSigma[GA[a], GA[b]] . (GS[q] + m) +
@@ -248,6 +296,9 @@ SG2Num[q_, m_] := m (SP[q, q] + m GS[q]);
 SG2Den[q_, m_] := FAD[{q, m, 4}];
 SG2Prefactor[] := G2/12;
 
+(* Vacuum-averaged single-line dimension-6 triple-gluon propagator.  This is
+   the standard S_Q^(G3) term; open-field cross-line G3 pieces live in the
+   separate BcMixingDimension6Complete.wl workbench. *)
 SG3Num[q_, m_] :=
   (GS[q] + m) .
     ((SP[q, q] - 3 m^2) GS[q] + 2 m (2 SP[q, q] - m^2)) .
@@ -258,8 +309,12 @@ SG3Prefactor[] := G3/48;
 GGVacuumTensor[a_, b_, r_, t_] :=
   MT[a, r] MT[b, t] - MT[a, t] MT[b, r];
 
+(* Color and Lorentz vacuum-average factor for
+   <g_s^2 G_A^{ab} G_B^{rs}>. *)
 GGVacuumPrefactor[] := G2 (($BcMixingNc^2 - 1)/2)/96;
 
+(* Standard trace cleanup chain.  When debugging traces, this is the first
+   place to inspect because all channel traces pass through it. *)
 EvaluateDiracTrace[chain_] :=
   chain //
     DotSimplify //
@@ -281,6 +336,11 @@ TraceForChannel[channel_String, cNum_, bNum_] := Module[
 (* ---------------------------------------------------------------------- *)
 (* Loop integrands                                                         *)
 (* ---------------------------------------------------------------------- *)
+
+(* LoopIntegrand[channel, order] is the main algebraic construction point.
+   It returns the projected loop integrand before Feynman parametrization or
+   numerical integration.  Here qc is the charm momentum k and qb is the
+   bottom momentum k-p. *)
 
 LoopIntegrand[channel_String, "pert"] := Module[
   {qc = k, qb = k - p},
@@ -340,6 +400,9 @@ LoopIntegrand[channel_String, "G3b"] := Module[
 LoopIntegrand[channel_String, "G3"] :=
   Total[LoopIntegrand[channel, #] & /@ {"G3c", "G3b"}] // Simplify;
 
+(* Convenience composite orders used by the notebook:
+   pertG2 = perturbative + all dimension-4 G2 pieces
+   total  = pertG2 + standard single-line G3 *)
 LoopIntegrand[channel_String, "pertG2"] :=
   LoopIntegrand[channel, "pert"] + LoopIntegrand[channel, "G2"] // Simplify;
 
@@ -354,6 +417,10 @@ LoopIntegrand[channel_String, order_String] /; ! MemberQ[$BcMixingOrders, order]
 (* ---------------------------------------------------------------------- *)
 (* Projection and Feynman-parameter forms                                  *)
 (* ---------------------------------------------------------------------- *)
+
+(* ProjectSpin1 applies the transverse spin-1 projector
+      1/3 (g_mn - p_m p_n/p^2).
+   This is the scalar invariant amplitude that enters the mixing formula. *)
 
 ProjectSpin1[expr_] := Module[
   {projector},
@@ -442,6 +509,19 @@ FeynmanParameterForm[channel_String, order_String : "total", opts : OptionsPatte
 (* Spectral densities, Borel moments and mixing angle                      *)
 (* ---------------------------------------------------------------------- *)
 
+(* There are two numerical routes in this file:
+
+   1. Perturbative terms use an ordinary spectral density rho(s), integrated
+      from threshold to s0 with Exp[-s/M2].
+
+   2. Condensate terms G2 and G3 are evaluated by direct Borel transform in a
+      Feynman parameter x.  This avoids explicitly manipulating delta-function
+      derivatives in rho(s).
+
+   The wrapper NumericBorelPi hides this distinction from the rest of the
+   code, so NumericMixingAngleDegrees can ask for "pert", "G2", "pertG2" or
+   "total" in the same way. *)
+
 SpectralDensityDefinedQ[channel_String, order_String] := Which[
   KeyExistsQ[$BcMixingSpectralDensities, {channel, order}], True,
   order === "G2", AllTrue[{"G2c", "G2b", "G2gg"}, SpectralDensityDefinedQ[channel, #] &],
@@ -462,6 +542,8 @@ SetSpectralDensity[channel_String, order_String, expr_, var_: s] := Module[
 
 ClearSpectralDensities[] := ($BcMixingSpectralDensities = <||>;);
 
+(* Kallen lambda and on-shell scalar product used to build the compact
+   perturbative spectral densities. *)
 KallenLambda[ss_, m1_, m2_] :=
   ss^2 + m1^4 + m2^4 - 2 ss m1^2 - 2 ss m2^2 - 2 m1^2 m2^2;
 
@@ -482,6 +564,10 @@ $BcMixingMassDimensions = <|
 
 MassDimensionFailureQ[dim_] := MatchQ[dim, _Failure];
 
+(* Lightweight dimensional-analysis helper.  This is not a full units package;
+   it simply checks whether our symbolic expressions are homogeneous in mass
+   dimension.  It was useful for catching the missing 1/(mb+mc) normalization
+   in the tensor current. *)
 MassDimension[expr_, dimRules_: Automatic] := Module[
   {rules = Replace[dimRules, Automatic -> $BcMixingMassDimensions]},
   MassDimensionInternal[expr, rules]
@@ -571,6 +657,9 @@ PerturbativeSpectralDensityDimensionReport[] := AssociationMap[
   {"AA", "AB", "BA", "BB"}
 ];
 
+(* These numerator functions are the result of the projected perturbative
+   Dirac trace after putting the two heavy quarks on shell.  The common
+   phase-space factor is added in PerturbativeSpectralDensity. *)
 PerturbativeNumerator[channel_String, ss_: s] := Module[
   {kp = OnShellKDotP[ss], k2 = mc^2, ch = ValidateChannel[channel]},
   Switch[
@@ -606,8 +695,17 @@ InstallPerturbativeSpectralDensities[];
 (* Direct Borel moments for condensates without smooth spectral densities  *)
 (* ---------------------------------------------------------------------- *)
 
+(* For condensates the Feynman-parameter denominator is rewritten as
+      x(1-x) (Q^2 + sbar[x]).
+   The Borel transform of (Q^2+sbar)^(-n) is then
+      Exp[-sbar/M2]/((n-1)! M2^(n-1)).
+   BorelTransformQ2 implements exactly that rule term by term. *)
+
 SBar[xvar_] := (mc^2 xvar + mb^2 (1 - xvar))/(xvar (1 - xvar));
 
+(* Extract finite Feynman-parameter terms from FeynCalc's output.  The result
+   is memoized because Feynman parametrization is one of the slower symbolic
+   steps. *)
 CleanFeynmanParameterTerms[channel_String, order_String] :=
   CleanFeynmanParameterTerms[channel, order] = Select[
     FeynmanParameterForm[channel, order] /. eps -> 0,
@@ -667,6 +765,7 @@ ContinuumXLimits[continuumVal_?NumericQ, params_: $BcMixingDefaultParameters] :=
 
 Options[NumericBorelPiG2] = Options[NIntegrate];
 
+(* Numeric direct Borel moment for all dimension-4 G2 pieces. *)
 NumericBorelPiG2[
   channel_String,
   m2Val_?NumericQ,
@@ -680,7 +779,7 @@ NumericBorelPiG2[
   If[lims === $Failed, Return[0.]];
   integrand = Evaluate[
     G2BorelIntegrandExpression[channel] /.
-      ParameterRules[params] /.
+      DynamicParameterRules[params] /.
       M2 -> m2Val
   ];
   NIntegrate[
@@ -692,6 +791,9 @@ NumericBorelPiG2[
 
 Options[NumericBorelPiG3] = Options[NIntegrate];
 
+(* Numeric direct Borel moment for the standard single-line dimension-6 G3
+   contribution.  Cross-line complete-D6 checks are intentionally outside this
+   production file. *)
 NumericBorelPiG3[
   channel_String,
   m2Val_?NumericQ,
@@ -705,7 +807,7 @@ NumericBorelPiG3[
   If[lims === $Failed, Return[0.]];
   integrand = Evaluate[
     G3BorelIntegrandExpression[channel] /.
-      ParameterRules[params] /.
+      DynamicParameterRules[params] /.
       M2 -> m2Val
   ];
   NIntegrate[
@@ -772,6 +874,10 @@ NormalizeMixingAngleDegrees[thetaDeg_?NumericQ] :=
 
 Options[NumericBorelPi] = Options[NIntegrate];
 
+(* Main numerical Borel moment dispatcher.
+   - "pert" integrates rho_pert(s)
+   - "G2" and "G3" call direct x-space Borel integrals
+   - "pertG2" and "total" are sums of the above. *)
 NumericBorelPi[
   channel_String,
   "G2",
@@ -846,6 +952,10 @@ NumericBorelPi[
 NumericBorelPi::norho =
   "No installed spectral density for channel `1`, order `2`. Use order \"pert\", \"G2\", \"G3\", \"pertG2\", or \"total\" for the implemented numerical moments.";
 
+(* Main user-facing angle function in radians.  It computes the three scalar
+   moments AA, AB and BB, inserts them into
+      theta = 1/2 ArcTan[AA-BB, -2 AB],
+   and normalizes the branch. *)
 NumericMixingAngle[
   m2Val_?NumericQ,
   continuumVal_?NumericQ,
@@ -922,6 +1032,14 @@ NumericOPESummary[
 (* ---------------------------------------------------------------------- *)
 (* Perturbative alpha_s K-factor sensitivity                               *)
 (* ---------------------------------------------------------------------- *)
+
+(* This is not a true NLO calculation.  It is a diagnostic model for asking:
+   "If the perturbative part of AA, AB, BB received different radiative
+   correction factors, how much could theta move?"
+
+   The model rescales only the perturbative moment,
+      Pi_pert^ij -> (1 + alphaS K_ij/Pi) Pi_pert^ij,
+   while leaving condensate terms unchanged. *)
 
 $BcMixingDefaultKFactors = <|"AA" -> 0, "AB" -> 0, "BA" -> 0, "BB" -> 0|>;
 
@@ -1172,6 +1290,15 @@ KFactorSensitivityEnvelope[args___] := Module[
 (* Monte Carlo uncertainty analysis                                        *)
 (* ---------------------------------------------------------------------- *)
 
+(* Monte Carlo workflow:
+   1. Draw mb, mc, G2, G3, M2, s0 from user-specified ranges.
+   2. Reject unphysical points, e.g. s0 <= (mb+mc)^2.
+   3. Compute theta for each accepted point.
+   4. Fit/summarize the theta distribution by mean and sigma.
+
+   By default $BcMixingMonteCarloIncludeG3 is False for speed.  In the
+   notebook we explicitly pass "IncludeG3" -> True for paper-facing runs. *)
+
 BcMixingMomentum::badrange =
   "Uncertainty range for `1` is invalid: `2`. Use a fixed number or {min,max}.";
 BcMixingMomentum::mcaccept =
@@ -1378,6 +1505,11 @@ MonteCarloMixingAngleGaussianSummary[samples_List] := Module[
 
 Options[MonteCarloMixingAngleUncertainty] = Options[MonteCarloMixingAngleSamples];
 
+(* Main Monte Carlo entry point used by the notebook.  The result is an
+   Association with "Samples" and "Summary", so it is easy to inspect with
+      result["Summary"] // Dataset
+      result["Samples"]  // Dataset
+*)
 MonteCarloMixingAngleUncertainty[
   n_Integer?Positive,
   order_String,
@@ -1416,6 +1548,8 @@ MonteCarloMixingAngleDataset[result_Association] /; KeyExistsQ[result, "Samples"
 MonteCarloMixingAngleDataset[samples_List] :=
   Dataset[samples];
 
+(* Quick diagnostic histogram.  The publication version below has better
+   labels, legend and MaTeX support. *)
 MonteCarloMixingAngleHistogram[result_, bins_: Automatic] := Module[
   {values = MonteCarloMixingAngleValues[result], summary, mu, sigma, x, xrange, hist, fit},
   If[values === {}, Return[$Failed]];
@@ -1516,6 +1650,9 @@ ExportMonteCarloMixingAngleSummary[
   ]
 ];
 
+(* Publication-style histogram for the paper.  The input is the Association
+   returned by MonteCarloMixingAngleUncertainty.  The second argument is the
+   number of bins, e.g. MonteCarloMixingAnglePublicationHistogram[mc, 15]. *)
 Options[MonteCarloMixingAnglePublicationHistogram] = {
   "HistogramColor" -> RGBColor[0.22, 0.39, 0.62],
   "FitColor" -> RGBColor[0.76, 0.12, 0.10],
@@ -1614,6 +1751,10 @@ MonteCarloMixingAnglePublicationHistogram[
 (* Borel-window and continuum-threshold scan helpers                       *)
 (* ---------------------------------------------------------------------- *)
 
+(* These helpers are for tables and quick scans.  A scan specification can be
+   either {min,max,step}, e.g. {7,9,0.5}, or an explicit list such as
+   {7,8,9}. *)
+
 BcMixingMomentum::badscan =
   "Scan specification `1` is not valid. Use {min,max,step} or an explicit numeric list.";
 
@@ -1663,6 +1804,8 @@ NumericMomentRecord[
   |>
 ];
 
+(* Return a flat list of records over an M2-s0 grid.  This is useful for
+   checking values before making a plot. *)
 Options[MixingAngleScan] = Options[NumericBorelPi];
 
 MixingAngleScan[
@@ -1767,6 +1910,8 @@ OPEConvergenceRecord[
   |>
 ];
 
+(* OPEConvergenceRecord is the main numerical check of the hierarchy:
+   it reports G2/pert, G3/pert and the theta shifts from each correction. *)
 Options[OPEConvergenceScan] = Options[NumericBorelPi];
 
 OPEConvergenceScan[
@@ -1794,6 +1939,119 @@ OPEConvergenceDataset[
   opts : OptionsPattern[OPEConvergenceScan]
 ] :=
   Dataset[OPEConvergenceScan[m2Spec, s0Spec, params, opts]];
+
+OPEContributionRecord[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  opts : OptionsPattern[NumericBorelPi]
+] :=
+  OPEContributionRecord[
+    m2Val, continuumVal, $BcMixingDefaultParameters, opts
+  ];
+
+OPEContributionRecord[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  params_Association,
+  opts : OptionsPattern[NumericBorelPi]
+] := Module[
+  {summary = NumericOPESummary[m2Val, continuumVal, params, opts]},
+  AssociationMap[
+    <|
+      "pert" -> summary[#]["pert"],
+      "G2" -> summary[#]["G2"],
+      "G3" -> summary[#]["G3"],
+      "total" -> summary[#]["total"],
+      "G2OverPert" -> summary[#]["G2OverPert"],
+      "G3OverPert" -> summary[#]["G3OverPert"]
+    |> &,
+    {"AA", "AB", "BB"}
+  ]
+];
+
+OPEContributionDataset[args___] :=
+  Dataset[OPEContributionRecord[args]];
+
+(* Older grouped bar chart for quick visual checks.  The paper currently uses
+   the line-plot helpers below instead, because they show stability in M2. *)
+Options[OPEContributionBarChart] = {
+  "Normalization" -> "OverPert",
+  ImageSize -> 520,
+  LabelStyle -> Directive[Black, 14, FontFamily -> "Times"],
+  BaseStyle -> {FontFamily -> "Times"},
+  PlotRange -> Automatic
+};
+
+OPEContributionBarChart[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  opts : OptionsPattern[]
+] :=
+  OPEContributionBarChart[
+    m2Val, continuumVal, $BcMixingDefaultParameters, opts
+  ];
+
+OPEContributionBarChart[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  params_Association,
+  opts : OptionsPattern[]
+] := Module[
+  {numericOpts, record, channels = {"AA", "AB", "BB"}, norm, values,
+   legends, ylabel},
+  numericOpts = FilterRules[{opts}, Options[NumericBorelPi]];
+  record = OPEContributionRecord[m2Val, continuumVal, params, Sequence @@ numericOpts];
+  norm = OptionValue["Normalization"];
+  {values, ylabel} = Switch[
+    norm,
+    "OverPert",
+      {
+        ({1, record[#]["G2OverPert"], record[#]["G3OverPert"]} & /@ channels),
+        "Contribution / perturbative"
+      },
+    "Raw",
+      {
+        ({record[#]["pert"], record[#]["G2"], record[#]["G3"]} & /@ channels),
+        "Borel moment"
+      },
+    "PercentOfTotal",
+      {
+        (100 {record[#]["pert"], record[#]["G2"], record[#]["G3"]}/record[#]["total"] & /@ channels),
+        "Contribution / total (%)"
+      },
+    _,
+      {
+        ({1, record[#]["G2OverPert"], record[#]["G3OverPert"]} & /@ channels),
+        "Contribution / perturbative"
+      }
+  ];
+  legends = {"pert", Superscript["G", 2], Superscript["G", 3]};
+  BarChart[
+    values,
+    ChartLayout -> "Grouped",
+    ChartLegends -> Placed[legends, Above],
+    ChartLabels -> Placed[channels, Below],
+    ChartStyle -> {
+      RGBColor[0.22, 0.39, 0.62],
+      RGBColor[0.9, 0.55, 0.12],
+      RGBColor[0.49, 0.65, 0.18]
+    },
+    Frame -> True,
+    Axes -> False,
+    FrameLabel -> {None, ylabel},
+    LabelStyle -> OptionValue[LabelStyle],
+    BaseStyle -> OptionValue[BaseStyle],
+    ImageSize -> OptionValue[ImageSize],
+    PlotRange -> OptionValue[PlotRange],
+    GridLines -> {None, Automatic},
+    GridLinesStyle -> Directive[GrayLevel[0.85], Dashed],
+    PlotLabel -> Row[{
+      "Momentum space, ", Superscript["M", 2], " = ", m2Val, " ",
+      Superscript["GeV", 2], ", ", Subscript["s", 0], " = ",
+      continuumVal, " ", Superscript["GeV", 2]
+    }]
+  ]
+];
 
 OPESummary[
   m2Val_?NumericQ,
@@ -1867,6 +2125,9 @@ MixingAngleContourPlot[m2Range : {_?NumericQ, _?NumericQ}, s0Range : {_?NumericQ
 (* Publication-quality auxiliary-parameter stability plots                 *)
 (* ---------------------------------------------------------------------- *)
 
+(* Wang-window defaults used in the notebook.  Change these in the notebook
+   rather than editing the file if you only want to test a new window. *)
+
 $BcMixingWangWindow = <|
   "M2Range" -> {7.0, 9.0},
   "M2Values" -> {7.0, 8.0, 9.0},
@@ -1887,6 +2148,9 @@ PublicationThetaYRange[values_List, minHalfWidth_: 1.0, padFraction_: 0.20] := M
 PublicationPlotStyles[n_Integer?Positive] :=
   Directive[AbsoluteThickness[2.2], #] & /@ ColorData[97, "ColorList"][[1 ;; n]];
 
+(* Data-only functions below return associations of curves.  Plot functions
+   then consume those data associations.  This separation makes it easy to
+   export the same numbers to CSV. *)
 MixingAngleM2StabilityData[
   m2Range : {_?NumericQ, _?NumericQ},
   s0Values_List,
@@ -2015,6 +2279,9 @@ BcMixingLegendLabel[
   magnification
 ];
 
+(* Publication plot: theta versus M2 at fixed s0 values.  Returns
+      <|"Data" -> ..., "Plot" -> ...|>
+   so the notebook can show the plot and export the data separately. *)
 Options[MixingAngleStabilityM2PublicationPlot] = Join[
   Options[NumericBorelPi],
   {
@@ -2040,12 +2307,28 @@ MixingAngleStabilityM2PublicationPlot[
   params_: $BcMixingDefaultParameters,
   opts : OptionsPattern[]
 ] := Module[
-  {nPoints = OptionValue["NPoints"], data, yRange, plotRange, styles, labels, frameLabel},
+  {nPoints = OptionValue["NPoints"], data},
   nPoints = Max[2, Round[nPoints]];
   data = MixingAngleM2StabilityData[
     m2Range, s0Values, order, params, nPoints,
     Sequence @@ FilterRules[{opts}, Options[NumericBorelPi]]
   ];
+  MixingAngleStabilityM2PublicationPlotFromData[
+    data,
+    m2Range,
+    Sequence @@ FilterRules[{opts}, Options[MixingAngleStabilityM2PublicationPlotFromData]]
+  ]
+];
+
+Options[MixingAngleStabilityM2PublicationPlotFromData] =
+  Options[MixingAngleStabilityM2PublicationPlot];
+
+MixingAngleStabilityM2PublicationPlotFromData[
+  data_Association,
+  m2Range : {_?NumericQ, _?NumericQ} : $BcMixingWangWindow["M2Range"],
+  opts : OptionsPattern[]
+] := Module[
+  {yRange, plotRange, styles, labels, frameLabel},
   yRange = PublicationThetaYRange[
     Values[data][[All, All, 2]],
     OptionValue["YHalfWidth"],
@@ -2123,12 +2406,28 @@ MixingAngleStabilityS0PublicationPlot[
   params_: $BcMixingDefaultParameters,
   opts : OptionsPattern[]
 ] := Module[
-  {nPoints = OptionValue["NPoints"], data, yRange, plotRange, styles, labels, frameLabel},
+  {nPoints = OptionValue["NPoints"], data},
   nPoints = Max[2, Round[nPoints]];
   data = MixingAngleS0StabilityData[
     s0Range, m2Values, order, params, nPoints,
     Sequence @@ FilterRules[{opts}, Options[NumericBorelPi]]
   ];
+  MixingAngleStabilityS0PublicationPlotFromData[
+    data,
+    s0Range,
+    Sequence @@ FilterRules[{opts}, Options[MixingAngleStabilityS0PublicationPlotFromData]]
+  ]
+];
+
+Options[MixingAngleStabilityS0PublicationPlotFromData] =
+  Options[MixingAngleStabilityS0PublicationPlot];
+
+MixingAngleStabilityS0PublicationPlotFromData[
+  data_Association,
+  s0Range : {_?NumericQ, _?NumericQ} : $BcMixingWangWindow["s0Range"],
+  opts : OptionsPattern[]
+] := Module[
+  {yRange, plotRange, styles, labels, frameLabel},
   yRange = PublicationThetaYRange[
     Values[data][[All, All, 2]],
     OptionValue["YHalfWidth"],
@@ -2176,6 +2475,249 @@ MixingAngleStabilityS0PublicationPlot[
       PlotRange -> plotRange,
       GridLines -> Automatic,
       GridLinesStyle -> Directive[GrayLevel[0.85], Dashed],
+      PlotLegends -> Placed[LineLegend[styles, labels, LegendMarkerSize -> 18], Right]
+    ]
+  |>
+];
+
+(* ---------------------------------------------------------------------- *)
+(* OPE-decomposition plots                                                 *)
+(* ---------------------------------------------------------------------- *)
+
+(* These plots answer: how much does theta change when going
+      pert -> pert+G2 -> pert+G2+G3 ?
+   They are more meaningful for the paper than a bar chart at one point. *)
+
+MixingAngleOrderM2Data[
+  m2Range : {_?NumericQ, _?NumericQ} : $BcMixingWangWindow["M2Range"],
+  continuumVal_?NumericQ,
+  orders_List : {"pert", "pertG2", "total"},
+  params_: $BcMixingDefaultParameters,
+  nPoints_: 25,
+  opts : OptionsPattern[NumericBorelPi]
+] := Module[
+  {n = Max[2, Round[nPoints]], m2Values, numericOpts},
+  m2Values = N[Subdivide[m2Range[[1]], m2Range[[2]], n - 1]];
+  numericOpts = FilterRules[{opts}, Options[NumericBorelPi]];
+  Association[
+    Table[
+      order -> Table[
+        {m2v, NumericMixingAngleDegrees[m2v, continuumVal, order, params, Sequence @@ numericOpts]},
+        {m2v, m2Values}
+      ],
+      {order, orders}
+    ]
+  ]
+];
+
+MixingAngleOrderLabel["pert"] := "\[Theta] pert";
+MixingAngleOrderLabel["G2"] := "\[Theta] G2";
+MixingAngleOrderLabel["G3"] := "\[Theta] G3";
+MixingAngleOrderLabel["pertG2"] := "\[Theta] pert + G2";
+MixingAngleOrderLabel["total"] := "\[Theta] pert + G2 + G3";
+MixingAngleOrderLabel[order_] := ToString[order];
+
+Options[MixingAngleOrderM2PublicationPlot] = Join[
+  Options[NumericBorelPi],
+  {
+    "NPoints" -> 25,
+    "YHalfWidth" -> 1.0,
+    "YPadFraction" -> 0.20,
+    "UseMaTeX" -> Automatic,
+    "MaTeXMagnification" -> 1.1,
+    ImageSize -> 540,
+    LabelStyle -> Directive[Black, 14, FontFamily -> "Times"],
+    BaseStyle -> {FontFamily -> "Times"},
+    FrameLabel -> Automatic,
+    PlotRange -> Automatic
+  }
+];
+
+MixingAngleOrderM2PublicationPlot[
+  m2Range : {_?NumericQ, _?NumericQ} : $BcMixingWangWindow["M2Range"],
+  continuumVal_?NumericQ,
+  orders_List : {"pert", "pertG2", "total"},
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] := Module[
+  {nPoints = Max[2, Round[OptionValue["NPoints"]]], data, numericOpts},
+  numericOpts = FilterRules[{opts}, Options[NumericBorelPi]];
+  data = MixingAngleOrderM2Data[m2Range, continuumVal, orders, params, nPoints, Sequence @@ numericOpts];
+  MixingAngleOrderM2PublicationPlotFromData[
+    data,
+    m2Range,
+    continuumVal,
+    Sequence @@ FilterRules[{opts}, Options[MixingAngleOrderM2PublicationPlotFromData]]
+  ]
+];
+
+Options[MixingAngleOrderM2PublicationPlotFromData] =
+  Options[MixingAngleOrderM2PublicationPlot];
+
+MixingAngleOrderM2PublicationPlotFromData[
+  data_Association,
+  m2Range : {_?NumericQ, _?NumericQ} : $BcMixingWangWindow["M2Range"],
+  continuumVal_?NumericQ,
+  opts : OptionsPattern[]
+] := Module[
+  {styles, labels, yRange, plotRange, frameLabel},
+  styles = PublicationPlotStyles[Length[data]];
+  labels = MixingAngleOrderLabel /@ Keys[data];
+  yRange = PublicationThetaYRange[
+    Values[data][[All, All, 2]],
+    OptionValue["YHalfWidth"],
+    OptionValue["YPadFraction"]
+  ];
+  plotRange = Replace[OptionValue[PlotRange], Automatic -> {m2Range, yRange}];
+  frameLabel = Replace[
+    OptionValue[FrameLabel],
+    Automatic -> {
+      BcMixingMaTeXLabel[
+        "M^2\\,(\\mathrm{GeV}^2)",
+        Row[{Superscript["M", 2], " (", Superscript["GeV", 2], ")"}],
+        OptionValue["UseMaTeX"],
+        OptionValue["MaTeXMagnification"]
+      ],
+      BcMixingMaTeXLabel[
+        "\\theta^\\circ",
+        Superscript["\[Theta]", "\[Degree]"],
+        OptionValue["UseMaTeX"],
+        OptionValue["MaTeXMagnification"]
+      ]
+    }
+  ];
+  <|
+    "Data" -> data,
+    "Plot" -> ListLinePlot[
+      Values[data],
+      Frame -> True,
+      Axes -> False,
+      FrameLabel -> frameLabel,
+      LabelStyle -> OptionValue[LabelStyle],
+      BaseStyle -> OptionValue[BaseStyle],
+      ImageSize -> OptionValue[ImageSize],
+      ImagePadding -> {{75, 20}, {60, 20}},
+      PlotStyle -> styles,
+      PlotMarkers -> Automatic,
+      PlotRange -> plotRange,
+      GridLines -> Automatic,
+      GridLinesStyle -> Directive[GrayLevel[0.85], Dashed],
+      PlotLabel -> Row[{
+        "Momentum space, ", Subscript["s", 0], " = ",
+        BcMixingLegendNumber[continuumVal], " ", Superscript["GeV", 2]
+      }],
+      PlotLegends -> Placed[LineLegend[styles, labels, LegendMarkerSize -> 18], Right]
+    ]
+  |>
+];
+
+OPEContributionRatioM2Data[
+  m2Range : {_?NumericQ, _?NumericQ} : $BcMixingWangWindow["M2Range"],
+  continuumVal_?NumericQ,
+  params_: $BcMixingDefaultParameters,
+  nPoints_: 25,
+  opts : OptionsPattern[NumericBorelPi]
+] := Module[
+  {n = Max[2, Round[nPoints]], m2Values, numericOpts, rec},
+  m2Values = N[Subdivide[m2Range[[1]], m2Range[[2]], n - 1]];
+  numericOpts = FilterRules[{opts}, Options[NumericBorelPi]];
+  Association[
+    Table[
+      channel -> Table[
+        rec = OPEContributionRecord[m2v, continuumVal, params, Sequence @@ numericOpts];
+        {m2v, rec[channel]["G2OverPert"], rec[channel]["G3OverPert"]},
+        {m2v, m2Values}
+      ],
+      {channel, {"AA", "AB", "BB"}}
+    ]
+  ]
+];
+
+Options[OPEContributionRatioM2PublicationPlot] = Join[
+  Options[NumericBorelPi],
+  {
+    "NPoints" -> 25,
+    "UseAbs" -> True,
+    ImageSize -> 620,
+    LabelStyle -> Directive[Black, 14, FontFamily -> "Times"],
+    BaseStyle -> {FontFamily -> "Times"},
+    PlotRange -> Automatic
+  }
+];
+
+OPEContributionRatioM2PublicationPlot[
+  m2Range : {_?NumericQ, _?NumericQ} : $BcMixingWangWindow["M2Range"],
+  continuumVal_?NumericQ,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] := Module[
+  {nPoints = Max[2, Round[OptionValue["NPoints"]]], data, numericOpts},
+  numericOpts = FilterRules[{opts}, Options[NumericBorelPi]];
+  data = OPEContributionRatioM2Data[m2Range, continuumVal, params, nPoints, Sequence @@ numericOpts];
+  OPEContributionRatioM2PublicationPlotFromData[
+    data,
+    m2Range,
+    continuumVal,
+    Sequence @@ FilterRules[{opts}, Options[OPEContributionRatioM2PublicationPlotFromData]]
+  ]
+];
+
+Options[OPEContributionRatioM2PublicationPlotFromData] =
+  Options[OPEContributionRatioM2PublicationPlot];
+
+OPEContributionRatioM2PublicationPlotFromData[
+  data_Association,
+  m2Range : {_?NumericQ, _?NumericQ} : $BcMixingWangWindow["M2Range"],
+  continuumVal_?NumericQ,
+  opts : OptionsPattern[]
+] := Module[
+  {useAbs = TrueQ[OptionValue["UseAbs"]], curves, labels, styles, yLabel},
+  curves = Flatten[
+    KeyValueMap[
+      Function[{channel, points},
+        {
+          ({#[[1]], If[useAbs, Abs[#[[2]]], #[[2]]]} & /@ points),
+          ({#[[1]], If[useAbs, Abs[#[[3]]], #[[3]]]} & /@ points)
+        }
+      ],
+      data
+    ],
+    1
+  ];
+  labels = Flatten[
+    ({# <> " G2", # <> " G3"} & /@ Keys[data])
+  ];
+  styles = {
+    Directive[RGBColor[0.22, 0.39, 0.62], AbsoluteThickness[2.2]],
+    Directive[RGBColor[0.22, 0.39, 0.62], Dashed, AbsoluteThickness[2.2]],
+    Directive[RGBColor[0.9, 0.55, 0.12], AbsoluteThickness[2.2]],
+    Directive[RGBColor[0.9, 0.55, 0.12], Dashed, AbsoluteThickness[2.2]],
+    Directive[RGBColor[0.49, 0.65, 0.18], AbsoluteThickness[2.2]],
+    Directive[RGBColor[0.49, 0.65, 0.18], Dashed, AbsoluteThickness[2.2]]
+  };
+  yLabel = If[useAbs, "|contribution / perturbative|", "contribution / perturbative"];
+  <|
+    "Data" -> data,
+    "Plot" -> ListLinePlot[
+      curves,
+      Frame -> True,
+      Axes -> False,
+      FrameLabel -> {
+        Row[{Superscript["M", 2], " (", Superscript["GeV", 2], ")"}],
+        yLabel
+      },
+      LabelStyle -> OptionValue[LabelStyle],
+      BaseStyle -> OptionValue[BaseStyle],
+      ImageSize -> OptionValue[ImageSize],
+      ImagePadding -> {{85, 20}, {60, 20}},
+      PlotStyle -> styles,
+      PlotRange -> OptionValue[PlotRange],
+      GridLines -> Automatic,
+      GridLinesStyle -> Directive[GrayLevel[0.85], Dashed],
+      PlotLabel -> Row[{
+        "Momentum OPE hierarchy, ", Subscript["s", 0], " = ",
+        BcMixingLegendNumber[continuumVal], " ", Superscript["GeV", 2]
+      }],
       PlotLegends -> Placed[LineLegend[styles, labels, LegendMarkerSize -> 18], Right]
     ]
   |>

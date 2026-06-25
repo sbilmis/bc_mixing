@@ -1,0 +1,103 @@
+Notebook[{
+Cell["B_c Mixing: Stability Plots", "Title"],
+Cell["This notebook is the clean plotting/export workflow for the momentum-space calculation. It computes the numerical stability tables first, exports the CSV files, then builds the plots from the stored tables. PDF export is controlled by stabilityExportPDF so that expensive or fragile exports do not run accidentally.", "Text"],
+
+Cell["Load the calculation", "Section"],
+Cell[BoxData[
+ RowBox[{"Get", "[", "\"BcMixingMomentum.wl\"", "]"}]], "Input"],
+
+Cell["Plot controls", "Section"],
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"stabilityOrder", "=", "\"pertG2\""}], ";", "\n",
+  RowBox[{"stabilityNPoints", "=", "25"}], ";", "\n",
+  RowBox[{"stabilityYHalfWidth", "=", "1.0"}], ";", "\n",
+  RowBox[{"stabilityUseMaTeX", "=", "False"}], ";", "\n",
+  RowBox[{"stabilityExportPDF", "=", "False"}], ";"}]], "Input"],
+Cell["Use stabilityOrder = \"pert\", \"pertG2\", or \"total\". Use stabilityUseMaTeX = True only when MaTeX is working in the Wolfram app and you want final journal-style labels. Use stabilityExportPDF = True only when you are ready to export PDFs.", "Text"],
+
+Cell["Wang window", "Section"],
+Cell[BoxData[
+ RowBox[{"$BcMixingWangWindow", "//", "Dataset"}]], "Input"],
+
+Cell["Compute stability data", "Section"],
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"m2StabilityData", "=", 
+   RowBox[{"MixingAngleM2StabilityData", "[", 
+    RowBox[{
+     RowBox[{"$BcMixingWangWindow", "[", "\"M2Range\"", "]"}], ",", 
+     RowBox[{"$BcMixingWangWindow", "[", "\"s0Values\"", "]"}], ",", 
+     "stabilityOrder", ",", "$BcMixingDefaultParameters", ",", 
+     "stabilityNPoints"}], "]"}]}], ";", "\n",
+  RowBox[{"s0StabilityData", "=", 
+   RowBox[{"MixingAngleS0StabilityData", "[", 
+    RowBox[{
+     RowBox[{"$BcMixingWangWindow", "[", "\"s0Range\"", "]"}], ",", 
+     RowBox[{"$BcMixingWangWindow", "[", "\"M2Values\"", "]"}], ",", 
+     "stabilityOrder", ",", "$BcMixingDefaultParameters", ",", 
+     "stabilityNPoints"}], "]"}]}], ";"}]], "Input"],
+
+Cell["Export numerical tables", "Section"],
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"ExportStabilityDataCSV", "[", 
+   RowBox[{
+    "m2StabilityData", ",", "\"BcMixingThetaVsM2_WangWindow.csv\"", ",", 
+    "\"M2\""}], "]"}], ";", "\n",
+  RowBox[{"ExportStabilityDataCSV", "[", 
+   RowBox[{
+    "s0StabilityData", ",", "\"BcMixingThetaVsS0_WangWindow.csv\"", ",", 
+    "\"s0\""}], "]"}], ";"}]], "Input"],
+
+Cell["Build publication plots from stored data", "Section"],
+Cell[BoxData[
+ RowBox[{
+  RowBox[{"m2Stability", "=", 
+   RowBox[{"MixingAngleStabilityM2PublicationPlotFromData", "[", 
+    RowBox[{
+     "m2StabilityData", ",", 
+     RowBox[{"$BcMixingWangWindow", "[", "\"M2Range\"", "]"}], ",", 
+     RowBox[{"\"UseMaTeX\"", "->", "stabilityUseMaTeX"}], ",", 
+     RowBox[{"\"YHalfWidth\"", "->", "stabilityYHalfWidth"}], ",", 
+     RowBox[{"ImageSize", "->", "540"}]}], "]"}]}], ";", "\n",
+  RowBox[{"s0Stability", "=", 
+   RowBox[{"MixingAngleStabilityS0PublicationPlotFromData", "[", 
+    RowBox[{
+     "s0StabilityData", ",", 
+     RowBox[{"$BcMixingWangWindow", "[", "\"s0Range\"", "]"}], ",", 
+     RowBox[{"\"UseMaTeX\"", "->", "stabilityUseMaTeX"}], ",", 
+     RowBox[{"\"YHalfWidth\"", "->", "stabilityYHalfWidth"}], ",", 
+     RowBox[{"ImageSize", "->", "540"}]}], "]"}]}], ";"}]], "Input"],
+
+Cell[BoxData[
+ RowBox[{"m2Stability", "[", "\"Plot\"", "]"}]], "Input"],
+Cell[BoxData[
+ RowBox[{"s0Stability", "[", "\"Plot\"", "]"}]], "Input"],
+
+Cell["Optional PDF export", "Section"],
+Cell[BoxData[
+ RowBox[{"If", "[", 
+  RowBox[{
+   RowBox[{"TrueQ", "[", "stabilityExportPDF", "]"}], ",", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"Export", "[", 
+      RowBox[{"\"BcMixingThetaVsM2_WangWindow.pdf\"", ",", 
+       RowBox[{"m2Stability", "[", "\"Plot\"", "]"}]}], "]"}], ",", 
+     RowBox[{"Export", "[", 
+      RowBox[{"\"BcMixingThetaVsS0_WangWindow.pdf\"", ",", 
+       RowBox[{"s0Stability", "[", "\"Plot\"", "]"}]}], "]"}]}], "}"}], ",", 
+   "\"PDF export skipped. Set stabilityExportPDF = True when ready.\""}], 
+  "]"}]], "Input"],
+
+Cell["Central value check", "Section"],
+Cell[BoxData[
+ RowBox[{"NumericMixingAngleDegrees", "[", 
+  RowBox[{"8.0", ",", "54.0", ",", "stabilityOrder", ",", 
+   "$BcMixingDefaultParameters"}], "]"}]], "Input"]
+},
+WindowSize->{1100, 760},
+WindowMargins->{{Automatic, 80}, {Automatic, 30}},
+FrontEndVersion->"14.0 for Mac OS X ARM (64-bit)",
+StyleDefinitions->"Default.nb"]
