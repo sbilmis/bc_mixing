@@ -57,7 +57,8 @@ ClearAll[
   TensorPaperBBRho1MSbar,
   TensorPaperBBNLOMomentMSbar,
   TensorPaperBBNLOMomentSummary,
-  InstallTensorPaperBBNLOMSbar
+  InstallTensorPaperBBNLOMSbar,
+  TensorPaperBBWithABDiagnosticAngleShift
 ];
 
 TensorPaperKallenLambda[x_, y_, z_] :=
@@ -220,6 +221,72 @@ InstallTensorPaperBBNLOMSbar[params_: $BcMixingDefaultParameters, muOpt_: Automa
       }),
     s
   ]
+];
+
+Options[TensorPaperBBWithABDiagnosticAngleShift] = {
+  "ABNPoints" -> 6,
+  "RealAccuracyGoal" -> 4,
+  "RealPrecisionGoal" -> 4,
+  "RealMaxRecursion" -> 10
+};
+
+TensorPaperBBWithABDiagnosticAngleShift[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  params_: $BcMixingDefaultParameters,
+  OptionsPattern[]
+] := Module[
+  {alpha, aa, ab, bb, abSummary, abShift, bbNLO, bbShift,
+   thetaLO, thetaAB, thetaABBB},
+  If[Length[DownValues[IndependentABDiagnosticBorelSummary]] == 0,
+    Get[FileNameJoin[{Directory[], "BcMixingAlphaSMixedAB.wl"}]]
+  ];
+  alpha = MergeDefaultParameters[params]["alphaS"];
+  aa = NumericBorelPi["AA", "pert", m2Val, continuumVal, params];
+  ab = NumericBorelPi["AB", "pert", m2Val, continuumVal, params];
+  bb = NumericBorelPi["BB", "pert", m2Val, continuumVal, params];
+  abSummary = IndependentABDiagnosticBorelSummary[
+    m2Val,
+    continuumVal,
+    params,
+    "NPoints" -> OptionValue["ABNPoints"],
+    "Progress" -> False,
+    AccuracyGoal -> OptionValue["RealAccuracyGoal"],
+    PrecisionGoal -> OptionValue["RealPrecisionGoal"],
+    MaxRecursion -> OptionValue["RealMaxRecursion"]
+  ];
+  If[FailureQ[abSummary] || abSummary === $Failed, Return[abSummary]];
+  abShift = alpha/Pi abSummary["DiagnosticRho1BorelMoment"];
+  bbNLO = TensorPaperBBNLOMomentMSbar[m2Val, continuumVal, params];
+  bbShift = alpha/Pi bbNLO;
+  thetaLO = N[180/Pi NormalizeMixingAngle[1/2 ArcTan[aa - bb, -2 ab]]];
+  thetaAB = N[
+    180/Pi NormalizeMixingAngle[
+      1/2 ArcTan[aa - bb, -2 (ab + abShift)]
+    ]
+  ];
+  thetaABBB = N[
+    180/Pi NormalizeMixingAngle[
+      1/2 ArcTan[aa - (bb + bbShift), -2 (ab + abShift)]
+    ]
+  ];
+  <|
+    "M2" -> m2Val,
+    "s0" -> continuumVal,
+    "PiAA_LO" -> aa,
+    "PiAB_LO" -> ab,
+    "PiBB_LO" -> bb,
+    "PiAB_DiagnosticShift" -> abShift,
+    "PiBB_TensorNLOShift" -> bbShift,
+    "Theta_LOPertDeg" -> thetaLO,
+    "Theta_ABDiagnosticOnlyDeg" -> thetaAB,
+    "DeltaTheta_ABOnlyDeg" -> NormalizeMixingAngleDegrees[thetaAB - thetaLO],
+    "Theta_ABplusBBDiagnosticDeg" -> thetaABBB,
+    "DeltaTheta_ABplusBBDeg" ->
+      NormalizeMixingAngleDegrees[thetaABBB - thetaLO],
+    "Caveat" ->
+      "Diagnostic only: AA NLO and final scheme synchronization are still required."
+  |>
 ];
 
 Print["Loaded BcMixingAlphaSTensorBB.wl. Run TensorPaperBBLOMatchingCheck[] and TensorPaperBBNLOMomentSummary[]."];

@@ -58,6 +58,9 @@ ClearAll[
   IndependentABAssembledDiagnosticPoint,
   IndependentABAssembledDiagnosticPointFromVirtual,
   IndependentABDiagnosticGrid,
+  IndependentABDiagnosticBorelMoment,
+  IndependentABDiagnosticBorelSummary,
+  IndependentABOnlyDiagnosticAngleShift,
   IndependentABStatus
 ];
 
@@ -751,6 +754,166 @@ IndependentABDiagnosticGrid[
   IndependentABAssembledDiagnosticPointFromVirtual[
     diag, #, scaleVal, params, opts
   ] & /@ sValues
+];
+
+Options[IndependentABDiagnosticBorelMoment] = Join[
+  Options[IndependentABRealMinusDipolesRho1],
+  {"NPoints" -> 8, "Scale" -> Automatic, "Progress" -> True}
+];
+
+IndependentABDiagnosticBorelMoment[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] := Module[
+  {
+    rules, threshold, range, quadrature, realOpts, scaleVal, progress,
+    virtualDiag, rows, total, virtualTotal, insertionTotal, realTotal,
+    fieldTotal
+  },
+  rules = DynamicParameterRules[params];
+  threshold = N[BcThreshold[] /. rules];
+  If[continuumVal <= threshold, Return[$Failed]];
+  range = continuumVal - threshold;
+  quadrature = IndependentAAGaussLegendreRule[OptionValue["NPoints"]];
+  realOpts = FilterRules[{opts}, Options[IndependentABRealMinusDipolesRho1]];
+  scaleVal = Replace[OptionValue["Scale"], Automatic -> (mb /. rules)];
+  progress = TrueQ[OptionValue["Progress"]];
+  virtualDiag = IndependentABCachedVirtualPaXDiagnostic[];
+  If[FailureQ[virtualDiag], Return[virtualDiag]];
+  rows = MapIndexed[
+    Function[{node, index},
+      Module[{z, weight, ssVal, jac, rhoData},
+        {z, weight} = node;
+        ssVal = threshold + range z^2;
+        jac = 2 range z;
+        If[progress,
+          Print[
+            "Independent AB diagnostic Borel node ",
+            First[index], "/", Length[quadrature],
+            ", s = ", NumberForm[ssVal, {7, 4}]
+          ]
+        ];
+        rhoData = IndependentABAssembledDiagnosticPointFromVirtual[
+          virtualDiag, ssVal, scaleVal, params, Sequence @@ realOpts
+        ];
+        If[rhoData === $Failed, Return[$Failed]];
+        <|
+          "z" -> z,
+          "s" -> ssVal,
+          "Weight" -> weight,
+          "Rho1Diagnostic" -> rhoData["TotalDiagnosticRho1"],
+          "BorelFactor" -> weight jac Exp[-ssVal/m2Val],
+          "Contribution" ->
+            weight jac Exp[-ssVal/m2Val] rhoData["TotalDiagnosticRho1"],
+          "Breakdown" -> rhoData
+        |>
+      ]
+    ],
+    quadrature
+  ];
+  If[MemberQ[rows, $Failed], Return[$Failed]];
+  total = Total[Lookup[rows, "Contribution"]];
+  virtualTotal = Total[
+    Lookup[rows, "BorelFactor"] *
+      Lookup[Lookup[rows, "Breakdown"], "VirtualFiniteRho1Raw"]
+  ];
+  fieldTotal = Total[
+    Lookup[rows, "BorelFactor"] *
+      Lookup[Lookup[rows, "Breakdown"], "FieldCountertermFiniteRho1"]
+  ];
+  insertionTotal = Total[
+    Lookup[rows, "BorelFactor"] *
+      Lookup[Lookup[rows, "Breakdown"], "IntegratedInsertionFiniteRho1"]
+  ];
+  realTotal = Total[
+    Lookup[rows, "BorelFactor"] *
+      Lookup[Lookup[rows, "Breakdown"], "RealMinusDipolesRho1"]
+  ];
+  <|
+    "M2" -> m2Val,
+    "s0" -> continuumVal,
+    "Scale" -> scaleVal,
+    "NPoints" -> OptionValue["NPoints"],
+    "DiagnosticRho1BorelMoment" -> total,
+    "VirtualFiniteBorelRho1" -> virtualTotal,
+    "FieldCountertermBorelRho1" -> fieldTotal,
+    "IntegratedInsertionBorelRho1" -> insertionTotal,
+    "RealMinusDipolesBorelRho1" -> realTotal,
+    "BreakdownClosure" ->
+      virtualTotal + fieldTotal + insertionTotal + realTotal - total,
+    "Rows" -> rows,
+    "Caveat" ->
+      "Diagnostic AB moment: finite scheme conventions must be synchronized before using in the final mixing angle."
+  |>
+];
+
+Options[IndependentABDiagnosticBorelSummary] =
+  Options[IndependentABDiagnosticBorelMoment];
+
+IndependentABDiagnosticBorelSummary[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] := Module[
+  {moment, lo, alpha, shift},
+  moment = IndependentABDiagnosticBorelMoment[
+    m2Val, continuumVal, params, opts
+  ];
+  If[FailureQ[moment] || moment === $Failed, Return[moment]];
+  lo = NumericBorelPi["AB", "pert", m2Val, continuumVal, params];
+  alpha = MergeDefaultParameters[params]["alphaS"];
+  shift = alpha/Pi moment["DiagnosticRho1BorelMoment"];
+  Join[
+    KeyDrop[moment, "Rows"],
+    <|
+      "PiAB_LOPert" -> lo,
+      "AlphaSOverPiDiagnosticShift" -> shift,
+      "PiAB_WithDiagnosticNLO" -> lo + shift,
+      "RelativeDiagnosticShift" -> shift/lo
+    |>
+  ]
+];
+
+Options[IndependentABOnlyDiagnosticAngleShift] =
+  Options[IndependentABDiagnosticBorelSummary];
+
+IndependentABOnlyDiagnosticAngleShift[
+  m2Val_?NumericQ,
+  continuumVal_?NumericQ,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] := Module[
+  {summary, alpha, aa, ab, bb, abShift, thetaLO, thetaAB},
+  summary = IndependentABDiagnosticBorelSummary[
+    m2Val, continuumVal, params, opts
+  ];
+  If[FailureQ[summary] || summary === $Failed, Return[summary]];
+  alpha = MergeDefaultParameters[params]["alphaS"];
+  aa = NumericBorelPi["AA", "pert", m2Val, continuumVal, params];
+  ab = NumericBorelPi["AB", "pert", m2Val, continuumVal, params];
+  bb = NumericBorelPi["BB", "pert", m2Val, continuumVal, params];
+  abShift = alpha/Pi summary["DiagnosticRho1BorelMoment"];
+  thetaLO = N[180/Pi NormalizeMixingAngle[1/2 ArcTan[aa - bb, -2 ab]]];
+  thetaAB = N[
+    180/Pi NormalizeMixingAngle[
+      1/2 ArcTan[aa - bb, -2 (ab + abShift)]
+    ]
+  ];
+  <|
+    "M2" -> m2Val,
+    "s0" -> continuumVal,
+    "PiAA_LO" -> aa,
+    "PiAB_LO" -> ab,
+    "PiBB_LO" -> bb,
+    "PiAB_DiagnosticShift" -> abShift,
+    "Theta_LOPertDeg" -> thetaLO,
+    "Theta_ABDiagnosticOnlyDeg" -> thetaAB,
+    "DeltaTheta_ABOnlyDeg" -> NormalizeMixingAngleDegrees[thetaAB - thetaLO],
+    "ABBorelSummary" -> summary
+  |>
 ];
 
 IndependentABStatus[] := <|

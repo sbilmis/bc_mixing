@@ -393,3 +393,54 @@ s~[\mathrm{GeV}^2] & \rho^{AB}_0
 The growth of the diagnostic ratio with \(s\) should be checked with tighter
 real-emission integration settings and with the final renormalization
 conventions before using it in a Borel moment.
+
+### First \(AB\) Borel diagnostic
+
+Using a 6-point threshold-clustered Gauss--Legendre rule at
+
+\[
+M^2=8~\mathrm{GeV}^2,\qquad s_0=54~\mathrm{GeV}^2,
+\]
+
+the current \(AB\) diagnostic gives
+
+\[
+\Pi^{AB}_{\rho_1,\mathrm{diagnostic}}=0.05539,
+\]
+
+\[
+\frac{\alpha_s}{\pi}\Pi^{AB}_{\rho_1,\mathrm{diagnostic}}
+=0.00458.
+\]
+
+Since
+
+\[
+\Pi^{AB}_{\mathrm{LO,pert}}=-0.03434,
+\]
+
+the relative \(AB\) moment shift is
+
+\[
+\frac{(\alpha_s/\pi)\Pi^{AB}_{\rho_1,\mathrm{diagnostic}}}
+{\Pi^{AB}_{\mathrm{LO,pert}}}
+\simeq -0.134.
+\]
+
+If only this \(AB\) diagnostic correction is applied, while \(AA\) and \(BB\)
+are kept at LO, the perturbative mixing angle changes by only
+
+\[
+\Delta\theta_{AB\text{-only}}\simeq -0.26^\circ.
+\]
+
+Combining the current \(AB\) diagnostic with the imported tensor-current
+\(BB\) NLO diagnostic gives
+
+\[
+\Delta\theta_{AB+BB}\simeq -11.45^\circ.
+\]
+
+This large shift is dominated by the \(BB\) tensor-current correction. It
+should not be interpreted as a final NLO prediction until \(AA\) is included
+in the same scheme and the \(BB\) convention is fully synchronized.
