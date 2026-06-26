@@ -142,3 +142,80 @@ If only \(BB\) is corrected while \(AA\) and \(AB\) remain at LO, the
 perturbative mixing angle changes from \(43.29^\circ\) to \(33.40^\circ\).
 This is **not** a physical NLO result; it is only a sensitivity diagnostic.
 The mixed \(\Pi^{AB}\) correction is expected to be essential.
+
+## Mixed \(AB\) channel scaffold
+
+The file
+
+- `BcMixingAlphaSMixedAB.wl`
+
+starts the independent mixed axial-vector/tensor calculation. The first
+checks are now in place:
+
+\[
+\rho^{AB}_{0,\mathrm{independent}}
+-
+\rho^{AB}_{0,\mathrm{main}}
+=0,
+\qquad
+\frac{\rho^{AB}_{0,\mathrm{independent}}}
+{\rho^{AB}_{0,\mathrm{main}}}
+=1 .
+\]
+
+The two \(\gamma_5\) matrices in the mixed LO trace are eliminated with
+
+\[
+\mathrm{Tr}\left[
+(\slashed p_c+m_c)\gamma_\mu\gamma_5
+(\slashed p_b-m_b)\sigma_{\nu p}\gamma_5
+\right]
+=
+\mathrm{Tr}\left[
+(\slashed p_c-m_c)\gamma_\mu
+(\slashed p_b-m_b)\sigma_{\nu p}
+\right],
+\]
+
+with the tensor-current convention used in the main code,
+
+\[
+i\sigma_{\nu p}
+=
+-\frac12[\gamma_\nu,\slashed p].
+\]
+
+The \(\gamma_5\)-free identity check gives zero, and the D-dimensional
+projected Born normalization ratio is currently
+
+\[
+\frac{B_D^{AB}}{B_4^{AB}}=1 .
+\]
+
+This is simpler than the \(AA\) case, where the \(O(\epsilon)\) Born
+normalization factor was essential.
+
+The virtual \(AB\) integrand has also been constructed with the same physical
+routing used in the \(AA\) workbench. The scalar-reduction diagnostic gives:
+
+- no remaining loop momentum after `TID`/`ToPaVe`;
+- `ReadyForPackageX -> True`;
+- reduced expression leaf count: 653.
+
+The real-emission \(AB\) trace scaffold is present and evaluates numerically.
+For example, at a representative physical Dalitz point
+
+\[
+s=40~\mathrm{GeV}^2,\qquad t=35~\mathrm{GeV}^2,
+\]
+
+with the midpoint of the allowed \(u\)-range, the projected trace evaluates to
+approximately
+
+\[
+-163.26 .
+\]
+
+The next work item is the Package-X evaluation of the virtual scalar
+integrals, followed by the soft subtraction and integrated dipole terms for
+the real-emission piece.
