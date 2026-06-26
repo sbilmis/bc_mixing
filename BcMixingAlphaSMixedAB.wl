@@ -32,6 +32,12 @@ ClearAll[
   IndependentABVirtualProjectedIntegrandGamma5Free,
   IndependentABVirtualScalarReductionGamma5Free,
   IndependentABVirtualReductionDiagnosticGamma5Free,
+  IndependentABVirtualPaXUVIRSplit,
+  IndependentABVirtualPaXUVIRSplitMapped,
+  IndependentABVirtualEpsilonBarCoefficients,
+  IndependentABVirtualPaXDiagnostic,
+  IndependentABVirtualRawToRho1,
+  IndependentABVirtualRho1DiagnosticPoint,
   IndependentABRealEmissionAChain,
   IndependentABRealEmissionBConjugateChain,
   IndependentABRealEmissionProjectedTrace,
@@ -250,6 +256,151 @@ IndependentABVirtualReductionDiagnosticGamma5Free[
       FreeQ[reduced, FeynCalc`Momentum[ell, ___]] &&
       remainingLoopObjects === {}
     )
+  |>
+];
+
+Options[IndependentABVirtualPaXUVIRSplit] = Join[
+  Options[FeynCalc`PaXEvaluateUVIRSplit],
+  {"TensorReduce" -> True, "UsePaVeBasis" -> True, "LoopDimension" -> D}
+];
+
+IndependentABVirtualPaXUVIRSplit[
+  ss_: s,
+  ell_: l,
+  opts : OptionsPattern[]
+] := Module[
+  {expr, diagnostic, paxOpts},
+  If[Length[Names["FeynCalc`PaXEvaluateUVIRSplit"]] == 0,
+    Return[Failure[
+      "PaXEvaluateUVIRSplitUnavailable",
+      <|"Message" -> "Load FeynHelpers/Package-X first."|>
+    ]]
+  ];
+  If[TrueQ[OptionValue["TensorReduce"]],
+    diagnostic = IndependentABVirtualReductionDiagnosticGamma5Free[
+      ss, ell, OptionValue["UsePaVeBasis"], OptionValue["LoopDimension"]
+    ];
+    If[! TrueQ[diagnostic["ReadyForPackageX"]],
+      Return[Failure[
+        "TensorReductionIncomplete",
+        <|
+          "Message" -> "Loop momentum remains after TID; Package-X was not called.",
+          "RemainingLoopObjects" -> diagnostic["RemainingLoopObjects"]
+        |>
+      ]]
+    ];
+    expr = diagnostic["ScalarReduction"],
+    expr = FeynCalc`ChangeDimension[
+      IndependentABVirtualProjectedIntegrandGamma5Free[ell, ss],
+      OptionValue["LoopDimension"]
+    ]
+  ];
+  paxOpts = FilterRules[{opts}, Options[FeynCalc`PaXEvaluateUVIRSplit]];
+  paxOpts = Join[
+    {
+      FeynCalc`PaXImplicitPrefactor ->
+        1/(2 Pi)^(4 - 2 FeynCalc`Epsilon)
+    },
+    paxOpts
+  ];
+  FeynCalc`PaXEvaluateUVIRSplit[expr, ell, Sequence @@ paxOpts]
+];
+
+Options[IndependentABVirtualPaXUVIRSplitMapped] =
+  Options[IndependentABVirtualPaXUVIRSplit];
+
+IndependentABVirtualPaXUVIRSplitMapped[
+  ss_: s,
+  ell_: l,
+  opts : OptionsPattern[]
+] := IndependentAAPaXToCountertermConventions[
+  IndependentABVirtualPaXUVIRSplit[ss, ell, opts]
+];
+
+(* Lightweight coefficient extraction.  Do not call FullSimplify here: the
+   full symbolic AB finite expression is large enough that global
+   simplification can dominate the runtime. *)
+IndependentABVirtualEpsilonBarCoefficients[expr_] := Module[
+  {expanded, z = Unique["z"], commonSeries},
+  expanded = Expand[expr /. ConditionalExpression[body_, _] :> body];
+  commonSeries = Normal@Series[
+    expanded /. {
+      FeynCalc`PaXEpsilonBar -> z,
+      epsUV -> z,
+      epsIR -> z,
+      FeynCalc`Epsilon -> z
+    },
+    {z, 0, 0}
+  ];
+  <|
+    "CommonPole" -> Coefficient[commonSeries, z, -1],
+    "Finite" -> Coefficient[commonSeries, z, 0],
+    "ContainsPaXEpsilonBar" -> ! FreeQ[expanded, FeynCalc`PaXEpsilonBar],
+    "ContainsEpsUV" -> ! FreeQ[expanded, epsUV],
+    "ContainsEpsIR" -> ! FreeQ[expanded, epsIR],
+    "BadObjects" -> Cases[
+      expanded,
+      Indeterminate | ComplexInfinity | DirectedInfinity[_],
+      Infinity
+    ]
+  |>
+];
+
+Options[IndependentABVirtualPaXDiagnostic] =
+  Options[IndependentABVirtualPaXUVIRSplitMapped];
+
+IndependentABVirtualPaXDiagnostic[
+  ss_: s,
+  ell_: l,
+  opts : OptionsPattern[]
+] := Module[
+  {mapped, coeffs},
+  mapped = IndependentABVirtualPaXUVIRSplitMapped[ss, ell, opts];
+  If[FailureQ[mapped], Return[mapped]];
+  coeffs = IndependentABVirtualEpsilonBarCoefficients[mapped];
+  <|
+    "MappedLeafCount" -> LeafCount[mapped],
+    "ContainsPaXEpsilonBar" -> coeffs["ContainsPaXEpsilonBar"],
+    "ContainsEpsUV" -> coeffs["ContainsEpsUV"],
+    "ContainsEpsIR" -> coeffs["ContainsEpsIR"],
+    "BadObjectCount" -> Length[coeffs["BadObjects"]],
+    "CommonPoleLeafCount" -> LeafCount[coeffs["CommonPole"]],
+    "FiniteLeafCount" -> LeafCount[coeffs["Finite"]],
+    "CommonPole" -> coeffs["CommonPole"],
+    "Finite" -> coeffs["Finite"]
+  |>
+];
+
+IndependentABVirtualRawToRho1[raw_, ss_: s] :=
+  Sqrt[KallenLambda[ss, mb, mc]]/ss/(16 Pi^2) *
+    IndependentAACutToInvariantFactor[] * (1/2) *
+    raw/(I/(16 Pi^2));
+
+Options[IndependentABVirtualRho1DiagnosticPoint] =
+  Options[IndependentABVirtualPaXDiagnostic];
+
+IndependentABVirtualRho1DiagnosticPoint[
+  ssVal_: 40.,
+  scaleVal_: 4.18,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] := Module[
+  {diag, rules, rho0, pole, finite},
+  diag = IndependentABVirtualPaXDiagnostic[
+    s, l, opts
+  ];
+  If[FailureQ[diag], Return[diag]];
+  rules = Join[ParameterRules[params], {s -> ssVal, muR -> scaleVal}];
+  rho0 = AlphaSLOSpectralDensity["AB", s] /. rules;
+  pole = Chop[N[IndependentABVirtualRawToRho1[diag["CommonPole"], s] /. rules]];
+  finite = Chop[N[IndependentABVirtualRawToRho1[diag["Finite"], s] /. rules]];
+  <|
+    "s" -> ssVal,
+    "mu" -> scaleVal,
+    "rho0AB" -> rho0,
+    "VirtualCommonPoleRho1Raw" -> pole,
+    "VirtualFiniteRho1Raw" -> finite,
+    "VirtualFiniteOverRho0" -> finite/rho0
   |>
 ];
 

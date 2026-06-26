@@ -219,3 +219,51 @@ approximately
 The next work item is the Package-X evaluation of the virtual scalar
 integrals, followed by the soft subtraction and integrated dipole terms for
 the real-emission piece.
+
+### Virtual Package-X layer
+
+The \(AB\) helper now includes a Package-X bridge for the unrenormalized
+virtual graph:
+
+- `IndependentABVirtualPaXUVIRSplit`
+- `IndependentABVirtualPaXUVIRSplitMapped`
+- `IndependentABVirtualPaXDiagnostic`
+- `IndependentABVirtualRho1DiagnosticPoint`
+
+The symbolic Package-X result has:
+
+- mapped expression leaf count: 26427;
+- no surviving `Indeterminate`, `ComplexInfinity`, or directed infinities;
+- common-pole expression leaf count: 265;
+- finite expression leaf count: 24951.
+
+At the representative point
+
+\[
+s=40~\mathrm{GeV}^2,\qquad \mu=m_b=4.18~\mathrm{GeV},
+\]
+
+the raw virtual contribution converted to the \(\rho_1^{AB}\) normalization is
+
+\[
+\rho^{AB}_{0}=-0.28233,
+\]
+
+\[
+\rho^{AB}_{1,\mathrm{virtual\ pole}}=-0.75597,
+\]
+
+\[
+\rho^{AB}_{1,\mathrm{virtual\ finite}}=-2.13987,
+\]
+
+so the raw virtual finite ratio is
+
+\[
+\frac{\rho^{AB}_{1,\mathrm{virtual\ finite}}}{\rho^{AB}_{0}}
+\simeq 7.58.
+\]
+
+This is not yet a physical NLO correction: the real-emission contribution,
+integrated subtraction terms, and counterterms still have to be combined so
+that the infrared poles cancel.
