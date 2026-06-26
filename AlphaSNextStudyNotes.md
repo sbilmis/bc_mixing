@@ -329,3 +329,41 @@ and therefore
 This is still marked diagnostic because the mixed channel contains one tensor
 current. The tensor-current renormalization convention must be included before
 this is promoted to the physical \(AB\) NLO coefficient.
+
+### Tensor-current renormalization for \(AB\)
+
+The tensor-current paper uses
+
+\[
+Z_T
+=
+1+\frac{\alpha_s}{4\pi\epsilon}C_F
++O(\alpha_s^2).
+\]
+
+For \(AB\), which contains one tensor current, this gives the pure-pole
+counterterm
+
+\[
+\rho^{AB}_{1,\mathrm{tensor\ CT,pole}}
+=
+\frac{C_F}{4}\rho^{AB}_0.
+\]
+
+At
+
+\[
+s=40~\mathrm{GeV}^2,
+\]
+
+this pole coefficient is
+
+\[
+\rho^{AB}_{1,\mathrm{tensor\ CT,pole}}
+=
+-0.09411.
+\]
+
+There is no finite term in the minimal-subtraction convention, so the finite
+diagnostic value above is unchanged. The pole is nevertheless required for
+the UV bookkeeping.

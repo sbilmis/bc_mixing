@@ -51,6 +51,7 @@ ClearAll[
   IndependentABRealMinusDipolesRho1,
   IndependentABCompleteInsertionFiniteRho1,
   IndependentABFieldCountertermFiniteRho1,
+  IndependentABTensorCurrentCountertermPoleRho1,
   IndependentABVirtualPlusCountertermFiniteRho1DiagnosticPoint,
   IndependentABAssembledDiagnosticPoint,
   IndependentABStatus
@@ -594,6 +595,19 @@ IndependentABFieldCountertermFiniteRho1[ss_: s] :=
     (-IndependentAAColorFactor[] (4 + 3 Log[muR^2/mc^2]))
   ) AlphaSLOSpectralDensity["AB", ss] // Expand;
 
+(* The mixed AB correlator contains one tensor current.  In the convention of
+   the two-mass tensor-current paper,
+
+     Z_T = 1 + alpha_s/(4 Pi epsilon) C_F + O(alpha_s^2).
+
+   Since rho = rho0 + alpha_s/Pi rho1, the tensor-current counterterm
+   contributes the pure pole coefficient C_F rho0/4.  There is no finite
+   contribution in minimal subtraction, but this pole must be included in the
+   UV bookkeeping. *)
+IndependentABTensorCurrentCountertermPoleRho1[ss_: s] :=
+  IndependentAAColorFactor[]/4 AlphaSLOSpectralDensity["AB", ss] //
+    Simplify;
+
 Options[IndependentABVirtualPlusCountertermFiniteRho1DiagnosticPoint] =
   Options[IndependentABVirtualRho1DiagnosticPoint];
 
@@ -617,6 +631,8 @@ IndependentABVirtualPlusCountertermFiniteRho1DiagnosticPoint[
     virt,
     <|
       "FieldCountertermFiniteRho1" -> N[field],
+      "TensorCurrentCountertermPoleRho1" ->
+        N[IndependentABTensorCurrentCountertermPoleRho1[s] /. rules],
       "VirtualPlusFieldFiniteRho1" ->
         N[virt["VirtualFiniteRho1Raw"] + field]
     |>
