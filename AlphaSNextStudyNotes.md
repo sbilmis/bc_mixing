@@ -367,3 +367,29 @@ this pole coefficient is
 There is no finite term in the minimal-subtraction convention, so the finite
 diagnostic value above is unchanged. The pole is nevertheless required for
 the UV bookkeeping.
+
+### Cached \(AB\) diagnostic grid
+
+The \(AB\) helper now caches the symbolic Package-X virtual result so that
+multiple \(s\)-points can be evaluated without repeating the reduction:
+
+- `IndependentABCachedVirtualPaXDiagnostic`
+- `IndependentABDiagnosticGrid`
+
+With modest integration settings, the current diagnostic grid gives:
+
+\[
+\begin{array}{c|c|c|c}
+s~[\mathrm{GeV}^2] & \rho^{AB}_0
+& \rho^{AB}_{1,\mathrm{diagnostic}}
+& \rho^{AB}_{1,\mathrm{diagnostic}}/\rho^{AB}_0\\
+\hline
+35 & -0.10921 & 0.05477 & -0.50\\
+40 & -0.28233 & 0.40124 & -1.42\\
+50 & -0.71735 & 1.75869 & -2.45
+\end{array}
+\]
+
+The growth of the diagnostic ratio with \(s\) should be checked with tighter
+real-emission integration settings and with the final renormalization
+conventions before using it in a Borel moment.

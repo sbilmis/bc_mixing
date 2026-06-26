@@ -36,7 +36,9 @@ ClearAll[
   IndependentABVirtualPaXUVIRSplitMapped,
   IndependentABVirtualEpsilonBarCoefficients,
   IndependentABVirtualPaXDiagnostic,
+  IndependentABCachedVirtualPaXDiagnostic,
   IndependentABVirtualRawToRho1,
+  IndependentABVirtualRho1FromPaXDiagnostic,
   IndependentABVirtualRho1DiagnosticPoint,
   IndependentABRealEmissionAChain,
   IndependentABRealEmissionBConjugateChain,
@@ -54,6 +56,8 @@ ClearAll[
   IndependentABTensorCurrentCountertermPoleRho1,
   IndependentABVirtualPlusCountertermFiniteRho1DiagnosticPoint,
   IndependentABAssembledDiagnosticPoint,
+  IndependentABAssembledDiagnosticPointFromVirtual,
+  IndependentABDiagnosticGrid,
   IndependentABStatus
 ];
 
@@ -382,25 +386,27 @@ IndependentABVirtualPaXDiagnostic[
   |>
 ];
 
+IndependentABCachedVirtualPaXDiagnostic[] :=
+  IndependentABCachedVirtualPaXDiagnostic[] =
+    IndependentABVirtualPaXDiagnostic[
+      s,
+      l,
+      FeynCalc`PaXC0Expand -> True,
+      FeynCalc`PaXSubstituteEpsilon -> False
+    ];
+
 IndependentABVirtualRawToRho1[raw_, ss_: s] :=
   Sqrt[KallenLambda[ss, mb, mc]]/ss/(16 Pi^2) *
     IndependentAACutToInvariantFactor[] * (1/2) *
     raw/(I/(16 Pi^2));
 
-Options[IndependentABVirtualRho1DiagnosticPoint] =
-  Options[IndependentABVirtualPaXDiagnostic];
-
-IndependentABVirtualRho1DiagnosticPoint[
-  ssVal_: 40.,
-  scaleVal_: 4.18,
-  params_: $BcMixingDefaultParameters,
-  opts : OptionsPattern[]
+IndependentABVirtualRho1FromPaXDiagnostic[
+  diag_Association,
+  ssVal_?NumericQ,
+  scaleVal_?NumericQ,
+  params_: $BcMixingDefaultParameters
 ] := Module[
-  {diag, rules, rho0, pole, finite},
-  diag = IndependentABVirtualPaXDiagnostic[
-    s, l, opts
-  ];
-  If[FailureQ[diag], Return[diag]];
+  {rules, rho0, pole, finite},
   rules = Join[ParameterRules[params], {s -> ssVal, muR -> scaleVal}];
   rho0 = AlphaSLOSpectralDensity["AB", s] /. rules;
   pole = Chop[N[IndependentABVirtualRawToRho1[diag["CommonPole"], s] /. rules]];
@@ -413,6 +419,23 @@ IndependentABVirtualRho1DiagnosticPoint[
     "VirtualFiniteRho1Raw" -> finite,
     "VirtualFiniteOverRho0" -> finite/rho0
   |>
+];
+
+Options[IndependentABVirtualRho1DiagnosticPoint] =
+  Options[IndependentABVirtualPaXDiagnostic];
+
+IndependentABVirtualRho1DiagnosticPoint[
+  ssVal_: 40.,
+  scaleVal_: 4.18,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] := Module[
+  {diag},
+  diag = IndependentABVirtualPaXDiagnostic[
+    s, l, opts
+  ];
+  If[FailureQ[diag], Return[diag]];
+  IndependentABVirtualRho1FromPaXDiagnostic[diag, ssVal, scaleVal, params]
 ];
 
 (* Real-emission tree trace for
@@ -674,6 +697,60 @@ IndependentABAssembledDiagnosticPoint[
           virtual["rho0AB"]
     |>
   ]
+];
+
+Options[IndependentABAssembledDiagnosticPointFromVirtual] =
+  Options[IndependentABRealMinusDipolesRho1];
+
+IndependentABAssembledDiagnosticPointFromVirtual[
+  diag_Association,
+  ssVal_?NumericQ,
+  scaleVal_: 4.18,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] := Module[
+  {virtual, rules, field, insertion, real},
+  virtual = IndependentABVirtualRho1FromPaXDiagnostic[
+    diag, ssVal, scaleVal, params
+  ];
+  rules = Join[ParameterRules[params], {s -> ssVal, muR -> scaleVal}];
+  field = N[IndependentABFieldCountertermFiniteRho1[s] /. rules];
+  insertion = N[IndependentABCompleteInsertionFiniteRho1[s, muR] /. rules];
+  real = IndependentABRealMinusDipolesRho1[ssVal, params, opts];
+  Join[
+    virtual,
+    <|
+      "FieldCountertermFiniteRho1" -> field,
+      "TensorCurrentCountertermPoleRho1" ->
+        N[IndependentABTensorCurrentCountertermPoleRho1[s] /. rules],
+      "VirtualPlusFieldFiniteRho1" ->
+        N[virtual["VirtualFiniteRho1Raw"] + field],
+      "IntegratedInsertionFiniteRho1" -> insertion,
+      "RealMinusDipolesRho1" -> real,
+      "TotalDiagnosticRho1" ->
+        virtual["VirtualFiniteRho1Raw"] + field + insertion + real,
+      "TotalDiagnosticRho1OverRho0" ->
+        (virtual["VirtualFiniteRho1Raw"] + field + insertion + real)/
+          virtual["rho0AB"]
+    |>
+  ]
+];
+
+Options[IndependentABDiagnosticGrid] =
+  Options[IndependentABRealMinusDipolesRho1];
+
+IndependentABDiagnosticGrid[
+  sValues_List,
+  scaleVal_: 4.18,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] := Module[
+  {diag},
+  diag = IndependentABCachedVirtualPaXDiagnostic[];
+  If[FailureQ[diag], Return[diag]];
+  IndependentABAssembledDiagnosticPointFromVirtual[
+    diag, #, scaleVal, params, opts
+  ] & /@ sValues
 ];
 
 IndependentABStatus[] := <|
