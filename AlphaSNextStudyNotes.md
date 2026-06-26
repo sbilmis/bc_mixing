@@ -267,3 +267,65 @@ so the raw virtual finite ratio is
 This is not yet a physical NLO correction: the real-emission contribution,
 integrated subtraction terms, and counterterms still have to be combined so
 that the infrared poles cancel.
+
+### Real-emission subtraction layer
+
+The \(AB\) helper now contains the channel-specific real-emission subtraction
+layer:
+
+- `IndependentABRealEmissionSoftTheoremCheck`
+- `IndependentABDipoleSoftCancellationCheck`
+- `IndependentABRealMinusDipolesRho1`
+- `IndependentABCompleteInsertionFiniteRho1`
+- `IndependentABAssembledDiagnosticPoint`
+
+The soft theorem check gives zero difference, and the leading soft difference
+between the exact real-emission trace and the dipole sum also vanishes:
+
+\[
+\Delta_{\mathrm{soft}}^{AB}=0.
+\]
+
+At the representative point
+
+\[
+s=40~\mathrm{GeV}^2,\qquad \mu=m_b=4.18~\mathrm{GeV},
+\]
+
+the finite real-minus-dipoles integral gives approximately
+
+\[
+\rho^{AB}_{1,\mathrm{real-subtracted}}=-0.32822 .
+\]
+
+After correcting the external-field counterterm to use the explicit \(AB\)
+Born density, the diagnostic assembly gives
+
+\[
+\rho^{AB}_{1,\mathrm{virtual\ finite}}=-2.13987,
+\]
+
+\[
+\rho^{AB}_{1,\mathrm{field}}=+1.42557,
+\]
+
+\[
+\rho^{AB}_{1,\mathrm{insertion}}=+1.44376,
+\]
+
+\[
+\rho^{AB}_{1,\mathrm{real-subtracted}}=-0.32822,
+\]
+
+and therefore
+
+\[
+\rho^{AB}_{1,\mathrm{diagnostic}}=+0.40124,
+\qquad
+\frac{\rho^{AB}_{1,\mathrm{diagnostic}}}{\rho^{AB}_{0}}
+\simeq -1.42.
+\]
+
+This is still marked diagnostic because the mixed channel contains one tensor
+current. The tensor-current renormalization convention must be included before
+this is promoted to the physical \(AB\) NLO coefficient.

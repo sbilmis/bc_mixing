@@ -43,6 +43,16 @@ ClearAll[
   IndependentABRealEmissionProjectedTrace,
   IndependentABRealEmissionTraceFormula,
   IndependentABRealEmissionTraceCheck,
+  IndependentABRealEmissionSoftKernel,
+  IndependentABRealEmissionSoftTheoremCheck,
+  IndependentABDipoleProjectedTrace,
+  IndependentABDipoleSumProjectedTrace,
+  IndependentABDipoleSoftCancellationCheck,
+  IndependentABRealMinusDipolesRho1,
+  IndependentABCompleteInsertionFiniteRho1,
+  IndependentABFieldCountertermFiniteRho1,
+  IndependentABVirtualPlusCountertermFiniteRho1DiagnosticPoint,
+  IndependentABAssembledDiagnosticPoint,
   IndependentABStatus
 ];
 
@@ -450,6 +460,204 @@ IndependentABRealEmissionTraceCheck[
 ] := Module[
   {rules = DynamicParameterRules[params]},
   N[IndependentABRealEmissionProjectedTrace[ssVal, uVal, vVal] /. rules]
+];
+
+IndependentABRealEmissionSoftKernel[ss_: s, yy_: yAA] :=
+  IndependentABRealEmissionSoftKernel[ss, yy] = Module[
+    {trace = IndependentABRealEmissionTraceFormula[] /. s -> ss},
+    Limit[
+      deltaAA^2 (trace /. {uAA -> deltaAA yy, vAA -> deltaAA (1 - yy)}),
+      deltaAA -> 0,
+      Assumptions -> ss > (mb + mc)^2 && mb > 0 && mc > 0 && 0 < yy < 1
+    ] // FullSimplify[#, ss > (mb + mc)^2 && mb > 0 && mc > 0] &
+  ];
+
+IndependentABRealEmissionSoftTheoremCheck[ss_: s, yy_: yAA] := Module[
+  {ratio, eikonal},
+  ratio = FullSimplify[
+    IndependentABRealEmissionSoftKernel[ss, yy]/
+      IndependentABLOProjectedTrace[ss],
+    ss > (mb + mc)^2 && mb > 0 && mc > 0 && 0 < yy < 1
+  ];
+  eikonal = 4 (
+    -mc^2/yy^2 - mb^2/(1 - yy)^2 +
+    (ss - mb^2 - mc^2)/(yy (1 - yy))
+  );
+  <|
+    "SoftKernelOverBorn" -> ratio,
+    "UniversalEikonal" -> eikonal,
+    "ExpectedBridgeTimesEikonal" ->
+      IndependentAACutToInvariantFactor[] eikonal,
+    "Difference" -> FullSimplify[
+      ratio - IndependentAACutToInvariantFactor[] eikonal,
+      ss > (mb + mc)^2 && mb > 0 && mc > 0 && 0 < yy < 1
+    ]
+  |>
+];
+
+IndependentABDipoleProjectedTrace[
+  ss_, r_, q_, emitterMass_, spectatorMass_
+] := IndependentAACutToInvariantFactor[] * 2 *
+  IndependentAADipoleBracket[
+    ss, r, q, emitterMass, spectatorMass
+  ]/r * IndependentABLOProjectedTrace[ss];
+
+IndependentABDipoleSumProjectedTrace[
+  ss_: s,
+  u_: uAA,
+  v_: vAA
+] := IndependentABDipoleProjectedTrace[ss, u, v, mc, mb] +
+  IndependentABDipoleProjectedTrace[ss, v, u, mb, mc];
+
+IndependentABDipoleSoftCancellationCheck[ss_: s, yy_: yAA] := Module[
+  {exact, dipoles, difference},
+  exact = IndependentABRealEmissionTraceFormula[] /. {
+    s -> ss,
+    uAA -> deltaAA yy,
+    vAA -> deltaAA (1 - yy)
+  };
+  dipoles = IndependentABDipoleSumProjectedTrace[
+    ss, deltaAA yy, deltaAA (1 - yy)
+  ];
+  difference = FullSimplify[
+    Limit[
+      deltaAA^2 (exact - dipoles),
+      deltaAA -> 0,
+      Assumptions ->
+        ss > (mb + mc)^2 && mb > 0 && mc > 0 && 0 < yy < 1
+    ],
+    ss > (mb + mc)^2 && mb > 0 && mc > 0 && 0 < yy < 1
+  ];
+  <|
+    "LeadingSoftDifference" -> difference,
+    "CancelsQ" -> TrueQ[difference == 0]
+  |>
+];
+
+Options[IndependentABRealMinusDipolesRho1] = Options[NIntegrate];
+
+IndependentABRealMinusDipolesRho1[
+  ssVal_?NumericQ,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] := Module[
+  {rules, mbv, mcv, tMin, trace, dipoles, coeff, integrand},
+  rules = DynamicParameterRules[params];
+  mbv = mb /. rules;
+  mcv = mc /. rules;
+  tMin = (mbv + mcv)^2;
+  trace = Evaluate[
+    IndependentABRealEmissionTraceFormula[] /. rules /. s -> ssVal
+  ];
+  dipoles = Evaluate[
+    IndependentABDipoleSumProjectedTrace[
+      ssVal, uAA, vAA
+    ] /. rules
+  ];
+  coeff = $BcMixingNc * IndependentAAColorFactor[] * 4 Pi^2 *
+    IndependentAAThreeBodyPhaseSpaceFactor[ssVal]/(2 Pi);
+  integrand[x_?NumericQ, z_?NumericQ] := Module[
+    {ttVal, bounds, uMinVal, uMaxVal, uVal, vVal, jac},
+    ttVal = tMin + (ssVal - tMin) x;
+    bounds = N[
+      IndependentAAThreeBodyUBounds[ssVal, ttVal] /. rules
+    ];
+    {uMinVal, uMaxVal} = bounds;
+    uVal = uMinVal + (uMaxVal - uMinVal) z;
+    vVal = ssVal - ttVal - uVal;
+    jac = (ssVal - tMin) (uMaxVal - uMinVal);
+    N[
+      coeff jac (
+        (trace - dipoles) /. {uAA -> uVal, vAA -> vVal}
+      )
+    ]
+  ];
+  NIntegrate[
+    integrand[xAA, yAA],
+    {xAA, 0, 1},
+    {yAA, 0, 1},
+    opts
+  ]
+];
+
+IndependentABCompleteInsertionFiniteRho1[
+  ss_: s,
+  scale_: muR
+] := 1/2 AlphaSLOSpectralDensity["AB", ss] (
+  IndependentAAInsertionQuarkFinite[ss, mc, mb, scale] +
+  IndependentAAInsertionQuarkFinite[ss, mb, mc, scale]
+);
+
+IndependentABFieldCountertermFiniteRho1[ss_: s] :=
+  1/4 (
+    (-IndependentAAColorFactor[] (4 + 3 Log[muR^2/mb^2])) +
+    (-IndependentAAColorFactor[] (4 + 3 Log[muR^2/mc^2]))
+  ) AlphaSLOSpectralDensity["AB", ss] // Expand;
+
+Options[IndependentABVirtualPlusCountertermFiniteRho1DiagnosticPoint] =
+  Options[IndependentABVirtualRho1DiagnosticPoint];
+
+IndependentABVirtualPlusCountertermFiniteRho1DiagnosticPoint[
+  ssVal_: 40.,
+  scaleVal_: 4.18,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] := Module[
+  {virt, rules, field},
+  virt = IndependentABVirtualRho1DiagnosticPoint[
+    ssVal, scaleVal, params, opts
+  ];
+  If[FailureQ[virt], Return[virt]];
+  rules = Join[ParameterRules[params], {s -> ssVal, muR -> scaleVal}];
+  (* The tensor current has its own MSbar renormalization.  This diagnostic
+     adds only the external on-shell field counterterm; the tensor-current
+     counterterm must be included before quoting a physical AB NLO result. *)
+  field = IndependentABFieldCountertermFiniteRho1[s] /. rules;
+  Join[
+    virt,
+    <|
+      "FieldCountertermFiniteRho1" -> N[field],
+      "VirtualPlusFieldFiniteRho1" ->
+        N[virt["VirtualFiniteRho1Raw"] + field]
+    |>
+  ]
+];
+
+Options[IndependentABAssembledDiagnosticPoint] = Join[
+  Options[IndependentABRealMinusDipolesRho1],
+  Options[IndependentABVirtualRho1DiagnosticPoint]
+];
+
+IndependentABAssembledDiagnosticPoint[
+  ssVal_: 40.,
+  scaleVal_: 4.18,
+  params_: $BcMixingDefaultParameters,
+  opts : OptionsPattern[]
+] := Module[
+  {virtOpts, realOpts, virtual, insertion, real, rules},
+  virtOpts = FilterRules[{opts}, Options[IndependentABVirtualRho1DiagnosticPoint]];
+  realOpts = FilterRules[{opts}, Options[IndependentABRealMinusDipolesRho1]];
+  virtual = IndependentABVirtualPlusCountertermFiniteRho1DiagnosticPoint[
+    ssVal, scaleVal, params, Sequence @@ virtOpts
+  ];
+  If[FailureQ[virtual], Return[virtual]];
+  rules = Join[ParameterRules[params], {s -> ssVal, muR -> scaleVal}];
+  insertion = N[IndependentABCompleteInsertionFiniteRho1[s, muR] /. rules];
+  real = IndependentABRealMinusDipolesRho1[
+    ssVal, params, Sequence @@ realOpts
+  ];
+  Join[
+    virtual,
+    <|
+      "IntegratedInsertionFiniteRho1" -> insertion,
+      "RealMinusDipolesRho1" -> real,
+      "TotalDiagnosticRho1" ->
+        virtual["VirtualPlusFieldFiniteRho1"] + insertion + real,
+      "TotalDiagnosticRho1OverRho0" ->
+        (virtual["VirtualPlusFieldFiniteRho1"] + insertion + real)/
+          virtual["rho0AB"]
+    |>
+  ]
 ];
 
 IndependentABStatus[] := <|
