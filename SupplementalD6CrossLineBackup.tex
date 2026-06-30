@@ -1,0 +1,238 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{pdflscape}
+
+\begin{document}
+
+% Backup material only.  Do not include in the paper unless explicitly needed.
+% This file records the complete-D6 open-field cross-line terms in a compact,
+% reproducible form.  The explicit machine-readable Borel integrands are stored
+% in d6_chunks/*_borel_integrand.wl.
+
+\section*{Backup: open-field cross-line dimension-six terms}
+
+This note records the open-field cross-line completion of the
+\(\langle g_s^3G^3\rangle\) sector.  These terms are not included in the
+compact coefficient-function appendix because their numerical effect is
+negligible in the accepted Borel window and the expressions are better kept in
+machine-readable form.
+
+The two cross-line topologies are
+\begin{align}
+  \Pi^{ij}_{G^3,\mathrm{cross}} &=
+  \Pi^{ij}_{c2b1}+\Pi^{ij}_{c1b2},\\
+  \Pi^{ij}_{c2b1} &\equiv
+  \Pi^{ij}\!\left[S_c^{(GG,\mathrm{open})}S_b^{(G,\mathrm{open})}\right],
+  \qquad
+  \Pi^{ij}_{c1b2} \equiv
+  \Pi^{ij}\!\left[S_c^{(G,\mathrm{open})}S_b^{(GG,\mathrm{open})}\right].
+\end{align}
+After the spin--1 projection and direct Borel transform, each term is evaluated as
+\begin{equation}
+  \Pi^{ij}_{X}(M^2,s_0)
+  =
+  \int_{\xi_-}^{\xi_+}d\xi\,
+  I^{ij}_{X}(\xi,M^2),
+  \qquad X\in\{c2b1,c1b2\}.
+\end{equation}
+
+The explicit \(I^{ij}_{X}\) are stored in the following files:
+\begin{center}
+\begin{tabular}{lll}
+\hline
+Channel & Topology & Machine-readable integrand \\
+\hline
+\(AA\) & \(c2b1\) & \texttt{d6\_chunks/AA\_c2b1\_fast\_borel\_integrand.wl} \\
+\(AA\) & \(c1b2\) & \texttt{d6\_chunks/AA\_c1b2\_fast\_borel\_integrand.wl} \\
+\(AB\) & \(c2b1\) & \texttt{d6\_chunks/AB\_c2b1\_fast\_borel\_integrand.wl} \\
+\(AB\) & \(c1b2\) & \texttt{d6\_chunks/AB\_c1b2\_fast\_borel\_integrand.wl} \\
+\(BB\) & \(c2b1\) & \texttt{d6\_chunks/BB\_c2b1\_fast\_borel\_integrand.wl} \\
+\(BB\) & \(c1b2\) & \texttt{d6\_chunks/BB\_c1b2\_fast\_borel\_integrand.wl} \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection*{Explicit cross-line coefficient functions}
+
+We factor the cross-line integrands as
+\begin{equation}
+  I^{ij}_{X}(\xi,M^2)
+  =
+  \langle g_s^3G^3\rangle\,
+  e^{-\bar s(\xi)/M^2}\,
+  D^{ij}_{X}(\xi,M^2),
+  \qquad X\in\{c2b1,c1b2\}.
+\end{equation}
+The explicit coefficient functions are written below in terms of numerators
+\(Q^{ij}_{X}\).  This is the same information as the compact machine-readable
+files, but split across lines for readability.
+
+\begin{landscape}
+\begingroup
+\small
+
+\begin{align}
+D^{AA}_{c2b1} &=
+-\frac{Q^{AA}_{c2b1}}{9216\pi^2M^8(\xi-1)^3\xi^3},&
+D^{AA}_{c1b2} &=
+\frac{Q^{AA}_{c1b2}}{18432\pi^2M^8(\xi-1)^3\xi^3},\nonumber\\
+D^{AB}_{c2b1} &=
+-\frac{Q^{AB}_{c2b1}}{9216\pi^2M^8(\xi-1)^4\xi^4(m_b+m_c)},&
+D^{AB}_{c1b2} &=
+\frac{Q^{AB}_{c1b2}}{18432\pi^2M^8(\xi-1)^4\xi^4(m_b+m_c)},\nonumber\\
+D^{BB}_{c2b1} &=
+-\frac{Q^{BB}_{c2b1}}{9216\pi^2M^8(\xi-1)^4\xi^4(m_b+m_c)^2},&
+D^{BB}_{c1b2} &=
+\frac{Q^{BB}_{c1b2}}{18432\pi^2M^8(\xi-1)^4\xi^4(m_b+m_c)^2}.
+\end{align}
+
+\begin{align}
+Q^{AA}_{c2b1}={}&
+2m_b^2(\xi-1)\xi^2
+\left[6M^4(\xi-1)^2\xi+M^2m_c^2(-6\xi^2+3\xi+8)+3m_c^4(3\xi-1)\right]\nonumber\\
+&+3m_bm_c\xi^2
+\left[-24M^4(\xi-1)^2+4M^2m_c^2(\xi^2-3\xi+2)+m_c^4\xi\right]\nonumber\\
+&-2\xi^3
+\left[-6M^6(\xi-1)^3\xi+6M^4m_c^2(\xi-1)^2\xi
++M^2m_c^4(-3\xi^2+3\xi+5)+3m_c^6\xi\right]\nonumber\\
+&+6m_b^4(\xi-1)^2\xi
+\left[M^2(\xi^2-1)+m_c^2(2-3\xi)\right]\nonumber\\
+&-3m_b^3m_c(\xi-1)\xi
+\left[4M^2(\xi^2-4\xi+3)+m_c^2(2\xi-1)\right]
++6m_b^6(\xi-1)^4+3m_b^5m_c(\xi-1)^3,
+\end{align}
+
+\begin{align}
+Q^{AA}_{c1b2}={}&
+6M^6\xi^2(\xi^2-2\xi+6)(\xi-1)^3
++6M^4\xi(\xi^2-2\xi+6)(\xi-1)^2
+\left[m_b^2(\xi-1)-m_c^2\xi\right]\nonumber\\
+&+M^2(\xi-1)\Big[
+m_b^4(\xi-1)^2(3\xi^2-9\xi+1)
+-24m_b^3m_c(\xi-1)^2\xi\nonumber\\
+&\hspace{1.0cm}
++m_b^2m_c^2\xi(-6\xi^3+27\xi^2-22\xi+1)
++24m_bm_c^3\xi^3+3m_c^4(\xi-4)\xi^3\Big]\nonumber\\
+&+3\Big[
+m_b^6(\xi-1)^4+2m_b^5m_c(\xi-1)^3
+-m_b^4m_c^2(\xi-1)^2\xi(3\xi-2)\nonumber\\
+&\hspace{1.0cm}
+-2m_b^3m_c^3\xi(2\xi^2-3\xi+1)
++m_b^2m_c^4\xi^2(3\xi^2-4\xi+1)
++2m_bm_c^5\xi^3-m_c^6\xi^4\Big],
+\end{align}
+
+\begin{align}
+Q^{AB}_{c2b1}={}&
+m_b^3(\xi-1)^2\xi^2
+\left[36M^4(\xi-1)^2+M^2m_c^2(-72\xi^2+123\xi-56)+9m_c^4(1-3\xi)\right]\nonumber\\
+&+m_b^2m_c(\xi-1)\xi^3
+\left[M^4(39\xi^2-89\xi+50)+M^2m_c^2(-48\xi^2+92\xi-47)+6m_c^4(1-3\xi)\right]\nonumber\\
+&-m_bm_c^2(\xi-1)\xi^3
+\left[3M^4(3\xi^2-11\xi+8)+M^2m_c^2(-36\xi^2+39\xi-8)-9m_c^4\xi\right]\nonumber\\
+&+m_c\xi^4
+\left[22M^6(\xi-1)^2+M^4m_c^2(-21\xi^2+62\xi-41)
++M^2m_c^4(24\xi^2-31\xi+10)+6m_c^6\xi\right]\nonumber\\
+&+3m_b^5(\xi-1)^3\xi
+\left[4M^2(3\xi^2-7\xi+4)+3m_c^2(3\xi-2)\right]\nonumber\\
+&+m_b^4m_c(\xi-1)^2\xi^2
+\left[M^2(24\xi^2-61\xi+37)+6m_c^2(3\xi-2)\right]
+-9m_b^7(\xi-1)^5-6m_b^6m_c(\xi-1)^4\xi,
+\end{align}
+
+\begin{align}
+Q^{AB}_{c1b2}={}&
+-m_b^3(\xi-1)^2\xi
+\left[M^4(\xi-1)^2(15\xi+52)+M^2m_c^2\xi(24\xi^2-23\xi-1)+3m_c^4\xi(3\xi-1)\right]\nonumber\\
+&-6m_b^2m_c(\xi-1)\xi^2
+\left[3M^4(\xi-1)^2(7\xi-3)+M^2m_c^2(8\xi^3+3\xi^2-18\xi+7)+m_c^4\xi(3\xi-1)\right]\nonumber\\
+&+m_b(\xi-1)\xi^2
+\left[104M^6(\xi-1)^3+4M^4m_c^2(\xi-1)^2(6\xi+13)
++4M^2m_c^4\xi(3\xi^2-\xi-2)+3m_c^6\xi^2\right]\nonumber\\
+&+6m_c\xi^3
+\left[24M^6(\xi-1)^3+12M^4m_c^2(\xi-1)^2(2\xi+1)
++4M^2m_c^4\xi(\xi^2+\xi-2)+m_c^6\xi^2\right]\nonumber\\
+&+m_b^5(\xi-1)^3\xi
+\left[M^2(12\xi^2-19\xi+7)+3m_c^2(3\xi-2)\right]\nonumber\\
+&+6m_b^4m_c\xi
+\left[M^2(4\xi+7)(\xi-1)^4+m_c^2\xi(3\xi-2)(\xi-1)^2\right]
+-3m_b^7(\xi-1)^5-6m_b^6m_c(\xi-1)^4\xi,
+\end{align}
+
+\begin{align}
+Q^{BB}_{c2b1}={}&
+2m_b^4(\xi-1)^2\xi^2
+\left[6M^4(\xi-6)(\xi-1)^2+M^2m_c^2(54\xi^2-102\xi+53)+9m_c^4(2\xi-1)\right]\nonumber\\
+&+m_b^3m_c(\xi-1)\xi^2
+\left[2M^4(27\xi^3-85\xi^2+100\xi-42)+2M^2m_c^2(54\xi^2-83\xi+32)+9m_c^4(3\xi-1)\right]\nonumber\\
+&+2m_b^2(\xi-1)\xi^3
+\left[12M^6(\xi-1)^3\xi-6M^4m_c^2(2\xi^3-10\xi^2+19\xi-11)
+-2M^2m_c^4(27\xi^2-39\xi+17)+3m_c^6(1-4\xi)\right]\nonumber\\
+&-m_bm_c\xi^3
+\left[-4M^6(\xi-12)(\xi-1)^2+2M^4m_c^2(27\xi^3-58\xi^2+55\xi-24)
++2M^2m_c^4(27\xi^2-28\xi+4)+9m_c^6\xi\right]\nonumber\\
+&+2\xi^4
+\left[12M^8(\xi-1)^4\xi-6M^6m_c^2(\xi-1)^2(2\xi^2-2\xi-5)
++6M^4m_c^4(\xi^3-2\xi^2+6\xi-5)\right.\nonumber\\
+&\hspace{1.0cm}\left.
++M^2m_c^6(18\xi^2-18\xi+5)+3m_c^8\xi\right]\nonumber\\
+&-6m_b^6(\xi-1)^3\xi
+\left[2M^2(3\xi^2-7\xi+4)+m_c^2(4\xi-3)\right]\nonumber\\
+&-m_b^5m_c(\xi-1)^2\xi
+\left[2M^2(27\xi^2-55\xi+28)+9m_c^2(3\xi-2)\right]
++6m_b^8(\xi-1)^5+9m_b^7m_c(\xi-1)^4,
+\end{align}
+
+\begin{align}
+Q^{BB}_{c1b2}={}&
+12M^8\xi^3(\xi^2-2\xi+6)(\xi-1)^4\nonumber\\
+&+2M^6\xi^2(\xi-1)^3
+\left[3m_b^2(2\xi^3-6\xi^2-19\xi+23)-8m_bm_c(2\xi+13)
+-6m_c^2\xi(\xi^2-2\xi-12)\right]\nonumber\\
+&+2M^4\xi(\xi-1)^2
+\Big[3m_b^4(\xi-1)^2(\xi^2+4\xi+5)
++4m_b^3m_c(8\xi^2+5\xi-13)\nonumber\\
+&\hspace{1.0cm}
++3m_b^2m_c^2\xi(-2\xi^3-12\xi^2+3\xi+11)
+-4m_bm_c^3\xi(8\xi+13)+3m_c^4\xi^2(\xi^2+10\xi+6)\Big]\nonumber\\
+&-M^2(\xi-1)\left[m_b^2(\xi-1)-m_c^2\xi\right]^2
+\left[m_b^2(18\xi^3-30\xi^2+11\xi+1)+16m_bm_c\xi-6m_c^2\xi^2(3\xi+2)\right]\nonumber\\
+&+3\left[m_b^2(\xi-1)-m_c^2\xi\right]^3
+\left[m_b^2(\xi-1)^2-m_c^2\xi^2\right].
+\end{align}
+
+\endgroup
+\end{landscape}
+
+At the central point \(M^2=8.0~\mathrm{GeV}^2\), \(s_0=54.0~\mathrm{GeV}^2\),
+the cached cross-line moments are
+\begin{center}
+\begin{tabular}{lrrr}
+\hline
+Channel & \(\Pi_{c2b1}\) & \(\Pi_{c1b2}\) & Sum \\
+\hline
+\(AA\) & \(-1.67570\times 10^{-6}\) & \(3.37871\times 10^{-7}\) & \(-1.33783\times 10^{-6}\) \\
+\(AB\) & \(6.90753\times 10^{-7}\) & \(1.19214\times 10^{-7}\) & \(8.09966\times 10^{-7}\) \\
+\(BB\) & \(-1.16841\times 10^{-6}\) & \(-7.55718\times 10^{-7}\) & \(-1.92413\times 10^{-6}\) \\
+\hline
+\end{tabular}
+\end{center}
+Adding these terms changes the central mixing angle by
+\begin{equation}
+  \theta_{\mathrm{with\,cross}}-\theta_{\mathrm{single-line}}
+  =
+  -2.84\times10^{-4}\ \mathrm{deg}.
+\end{equation}
+The corresponding relative shifts of the three Borel moments are
+\begin{equation}
+  \left(
+  \frac{\Pi^{AA}_{\mathrm{cross}}}{\Pi^{AA}_{\mathrm{base}}},
+  \frac{\Pi^{AB}_{\mathrm{cross}}}{\Pi^{AB}_{\mathrm{base}}},
+  \frac{\Pi^{BB}_{\mathrm{cross}}}{\Pi^{BB}_{\mathrm{base}}}
+  \right)
+  =
+  (-2.84,\,-2.37,\,-4.47)\times10^{-5}.
+\end{equation}
+
+\end{document}

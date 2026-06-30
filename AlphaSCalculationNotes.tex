@@ -3,6 +3,7 @@
 \usepackage{amsmath,amssymb,bm}
 \usepackage{slashed}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{hyperref}
 \usepackage{xcolor}
 \usepackage{listings}
@@ -650,6 +651,143 @@ aaMSbar = IndependentAAFinalNLOBorelMSbarSummary[
 ];
 \end{lstlisting}
 
+\section{Mixing-angle diagnostic: what the LO and NLO numbers mean}
+
+It is useful to keep three angle numbers separate.  They answer three
+different questions.
+
+\begin{center}
+\small
+\begin{tabular}{
+>{\raggedright\arraybackslash}p{0.29\linewidth}
+>{\raggedright\arraybackslash}p{0.35\linewidth}
+>{\raggedright\arraybackslash}p{0.16\linewidth}
+c}
+\toprule
+Name & Meaning & Perturbative content & \(\theta\)\\
+\midrule
+Earlier LO diagnostic &
+The original central LO angle evaluated with the fixed numerical inputs
+\(m_b=4.18\,{\rm GeV}\) and \(m_c=1.27\,{\rm GeV}\).  This is the number used
+in the earlier LO-only discussion. &
+LO only &
+\(43.29^\circ\)\\
+\addlinespace
+Synchronized LO baseline &
+The LO angle after moving all three channels to one common
+\(\MSbar\)-input setup at \(\mu=4.18\,{\rm GeV}\).  This is the correct
+baseline for judging the synchronized NLO diagnostic. &
+LO only &
+\(44.88^\circ\)\\
+\addlinespace
+Synchronized NLO diagnostic &
+The same common \(\MSbar\)-input setup, now including the diagnostic
+\(O(\as)\) corrections in \(AA\), \(AB\), and \(BB\). &
+LO+\(O(\as)\) &
+\(39.56^\circ\)\\
+\bottomrule
+\end{tabular}
+\normalsize
+\end{center}
+
+The important lesson is that the NLO shift must be measured relative to the
+synchronized LO baseline, not relative to the earlier fixed-input LO number:
+\begin{equation}
+ \Delta\theta_{\rm sync.\ diag.}
+ =39.56^\circ-44.88^\circ
+ =-5.32^\circ .
+\end{equation}
+Thus the present synchronized diagnostic says that the perturbative
+\(O(\as)\) corrections lower the mixing angle by about \(5.3^\circ\) in the
+common-scheme setup.
+
+The word ``diagnostic'' is intentional.  The calculation is synchronized in a
+single numerical scheme, but the \(AB\) finite coefficient is still the
+current diagnostic construction rather than a closed-form coefficient derived
+directly in the final \(\MSbar\) convention.  We checked the largest obvious
+source of concern: the explicit tensor-current normalization
+\begin{equation}
+ J_B^\mu
+ =
+ \frac{i}{m_b+m_c}\,
+ \bar b\,\sigma^{\mu\alpha}p_\alpha\gamma_5\,c .
+\end{equation}
+Splitting the \(AB\) pole-to-\(\MSbar\) Born-derivative mass conversion gives
+\begin{align}
+ \Pi^{AB}_{1,\rm mass\,conv.,full}&=0.99512,\\
+ \Pi^{AB}_{1,\rm mass\,conv.,norm.\ fixed}&=0.88991,\\
+ \Pi^{AB}_{1,\rm mass\,conv.,norm.\ only}&=0.10521.
+\end{align}
+Only about \(11\%\) of the large \(AB\) conversion comes from differentiating
+the explicit \(1/(m_b+m_c)\) current normalization.  Therefore the large
+\(AB\) term is not mainly a normalization artifact; it is mostly produced by
+the mass dependence of the underlying \(AB\) Born spectral density.
+
+The synchronized channel table at
+\(M^2=8\,{\rm GeV}^2\), \(s_0=54\,{\rm GeV}^2\), and
+\(\mu=4.18\,{\rm GeV}\) is
+\begin{center}
+\begin{tabular}{ccccc}
+\toprule
+Channel & \(\Pi_{\rm LO}\) & \(\Pi_1\) &
+\((\as/\pi)\Pi_1\) & Relative shift\\
+\midrule
+\(AA\) & \(0.06947\) & \(-0.49883\) & \(-0.03369\) & \(-48.5\%\)\\
+\(AB\) & \(-0.05573\) & \(+1.09800\) & \(+0.07415\) & \(-133.1\%\)\\
+\(BB\) & \(0.06900\) & \(-0.38704\) & \(-0.02614\) & \(-37.9\%\)\\
+\bottomrule
+\end{tabular}
+\end{center}
+This table should be read as the end-of-session synchronized NLO diagnostic,
+not as a final publication-grade NLO prediction.
+
+Equivalently, the same information can be displayed as a direct
+``without NLO'' versus ``with NLO'' comparison:
+\begin{center}
+\begin{tabular}{ccccc}
+\toprule
+Channel & LO & NLO shift & LO+NLO & \(K\)-factor\\
+\midrule
+\(AA\) & \(0.06947\) & \(-0.03369\) & \(0.03578\) & \(-0.485\)\\
+\(AB\) & \(-0.05573\) & \(+0.07415\) & \(0.01842\) & \(-1.331\)\\
+\(BB\) & \(0.06900\) & \(-0.02614\) & \(0.04286\) & \(-0.379\)\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Here ``NLO shift'' means \((\as/\pi)\Pi_1\), ``LO+NLO'' means
+\(\Pi_{\rm LO}+(\as/\pi)\Pi_1\), and
+\(K=(\as/\pi)\Pi_1/\Pi_{\rm LO}\).  The \(K\)-factor column is a
+convergence diagnostic for each channel.  The
+large value in \(AB\) should be interpreted with its sign: the LO \(AB\)
+moment is negative, while the synchronized NLO change is positive, so the
+relative ratio is negative and larger than unity in magnitude.
+
+The reason such large channel corrections are plausible is the heavy-heavy
+threshold region.  With the synchronized masses,
+\begin{equation}
+ s_{\rm th}=(\overline m_b+\overline m_c)^2=27.2898\,{\rm GeV}^2 ,
+\end{equation}
+and the Borel quadrature samples points very close to this threshold.  For
+the first few synchronized nodes one finds
+\begin{center}
+\begin{tabular}{cccc}
+\toprule
+\(s\) & \(s-s_{\rm th}\) & \(v_{\rm rel}\) & \(\as(\mu)/v_{\rm rel}\)\\
+\midrule
+27.320 & 0.030 & 0.083 & 2.55\\
+28.056 & 0.766 & 0.394 & 0.54\\
+31.161 & 3.871 & 0.721 & 0.29\\
+\bottomrule
+\end{tabular}
+\end{center}
+Thus the lowest part of the Borel integral lies in a region where a
+Coulomb-like threshold structure, schematically \(\as/v_{\rm rel}\), is not
+a small number.  This explains why the channel-by-channel fixed-order NLO
+diagnostics can be sizeable.  It does not, by itself, determine the sign of
+each correction: the sign and final size also depend on the current
+projection, the subtraction pieces, and the mass-scheme conversion.
+
 \section{Current conclusion}
 
 \begin{itemize}
@@ -664,10 +802,15 @@ aaMSbar = IndependentAAFinalNLOBorelMSbarSummary[
  \item At the test point, the correction is large: approximately \(79\%\)
  in the fixed-input on-shell diagnostic and \(72\%\) in the common-scale
  \(\MSbar\) calculation at \(\mu=2\) GeV.
- \item This is the correction to the \(AA\) moment, not yet to the mixing
- angle.  A consistent NLO mixing angle requires independent \(AB\) and
- \(BB\) coefficients, where cancellations in the angle formula may reduce
- or enhance the final shift.
+ \item The synchronized \(AA,AB,BB\) diagnostic gives
+ \(\theta_{\rm sync.\ diag.}=39.56^\circ\), compared with the synchronized
+ LO baseline \(44.88^\circ\), i.e.
+ \(\Delta\theta_{\rm sync.\ diag.}=-5.32^\circ\).
+ \item A publication-grade final NLO prediction still requires a fully
+ independent \(AB\) finite coefficient in the same \(\MSbar\) convention.
+ The immediate concern that the large \(AB\) mass-conversion term is merely
+ an artifact of differentiating the tensor-current denominator
+ \(1/(m_b+m_c)\) has been checked and is not supported by the split test.
 \end{itemize}
 
 \begin{thebibliography}{9}

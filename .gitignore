@@ -10,3 +10,8 @@ old/
 output/
 tmp/
 X-master.tar.gz
+archive/**
+!archive/
+!archive/README.md
+!archive/2026-06-30_redundant_generated/
+!archive/2026-06-30_redundant_generated/README.md

@@ -1,0 +1,239 @@
+% Appendix snippet: condensate coefficient functions.
+% Requires amsmath and graphicx if the resizebox wrappers are kept.
+
+\section{Condensate coefficient functions}
+\label{app:condensate-coefficients}
+
+For completeness, we give the coefficient functions used for the dimension-four
+and dimension-six condensate contributions to the Borel moments.  We denote
+\(\mathcal M\equiv M^2\) and
+\begin{equation}
+  \bar s(\xi)=\frac{m_b^2}{\xi}+\frac{m_c^2}{1-\xi}.
+\end{equation}
+The continuum-subtracted integration limits are
+\begin{equation}
+  \xi_\pm(s_0)=
+  \frac{s_0+m_b^2-m_c^2\pm
+  \sqrt{\lambda(s_0,m_b^2,m_c^2)}}{2s_0},
+  \qquad
+  \lambda(a,b,c)=a^2+b^2+c^2-2ab-2ac-2bc .
+\end{equation}
+The condensate pieces are evaluated as direct Borel transforms,
+\begin{equation}
+  \Pi^{ij}_{G^2}(\mathcal M,s_0)
+  =
+  \langle g_s^2G^2\rangle
+  \int_{\xi_-}^{\xi_+}d\xi\,
+  e^{-\bar s(\xi)/\mathcal M}
+  C^{ij}_{G^2}(\xi,\mathcal M),
+\end{equation}
+\begin{equation}
+  \Pi^{ij}_{G^3}(\mathcal M,s_0)
+  =
+  \langle g_s^3G^3\rangle
+  \int_{\xi_-}^{\xi_+}d\xi\,
+  e^{-\bar s(\xi)/\mathcal M}
+  C^{ij}_{G^3}(\xi,\mathcal M),
+\end{equation}
+where \(ij=AA,AB,BB\).  The \(G^3\) coefficient functions below correspond to
+the standard vacuum-averaged single-line heavy-quark propagator contribution.
+Open-field cross-line dimension-six terms are not included in these
+coefficients.
+
+\subsection{Dimension-four gluon condensate}
+
+It is convenient to write the coefficient functions as
+\begin{align}
+  C^{AA}_{G^2} &=
+  \frac{P^{AA}_{G^2}}{288\pi^2\mathcal M^2(\xi-1)^3\xi^3},
+  &
+  C^{AB}_{G^2} &=
+  \frac{P^{AB}_{G^2}}
+  {96\pi^2\mathcal M^2(\xi-1)^3\xi^3(m_b+m_c)}, \nonumber\\
+  C^{BB}_{G^2} &=
+  \frac{P^{BB}_{G^2}}
+  {288\pi^2\mathcal M^2(\xi-1)^4\xi^4(m_b+m_c)^2}.
+\end{align}
+The corresponding numerators are
+\begin{align}
+P^{AA}_{G^2}={}&
+\xi^2\!\left[-\mathcal M^2(\xi-1)^3(5\xi+2)
++\mathcal M m_c^2(8\xi^3-15\xi^2+9\xi-2)
++3m_c^4\xi^2\right] \nonumber\\
+&-m_b^2\xi(\xi-1)
+\left[\mathcal M(\xi-1)^2(8\xi-5)
++3m_c^2(2\xi^2-2\xi+1)\right] \nonumber\\
+&+3m_bm_c\xi(\xi-1)
+\left[\mathcal M(-4\xi^2+4\xi-2)+m_c^2\xi\right]
++3m_b^4(\xi-1)^4
+-3m_b^3m_c\xi(\xi-1)^2,
+\end{align}
+\begin{align}
+P^{AB}_{G^2}={}&
+\mathcal M^2(\xi-1)\xi
+\left[m_b(\xi-1)^2(\xi^2-4\xi+2)
+-m_c\xi^2(\xi^2+2\xi-1)\right] \nonumber\\
+&+\mathcal M\Big[
+m_b^3(\xi^2+2\xi-2)(\xi-1)^3
+-m_b^2m_c\xi(\xi^4-7\xi^3+11\xi^2-7\xi+2) \nonumber\\
+&\hspace{2.0cm}
+-m_bm_c^2\xi(\xi^4+2\xi^3-7\xi^2+6\xi-2)
++m_c^3\xi^3(\xi^2-4\xi+1)\Big] \nonumber\\
+&-(m_b-m_c)\Big[
+m_b^4(\xi-1)^4
+-m_b^3m_c\xi(\xi-1)^2
++m_b^2m_c^2\xi(-2\xi^3+4\xi^2-3\xi+1) \nonumber\\
+&\hspace{2.0cm}
++m_bm_c^3\xi^2(\xi-1)
++m_c^4\xi^4\Big],
+\end{align}
+\begin{align}
+P^{BB}_{G^2}={}&
+m_b^2(\xi-1)\xi^2
+\left[2\mathcal M^2(\xi-1)^3(3\xi+1)
++2\mathcal M m_c^2(11\xi^3-18\xi^2+9\xi-2) \right. \nonumber\\
+&\hspace{0.8cm}\left.
++3m_c^4(3\xi^2-2\xi+1)\right] \nonumber\\
+&+3m_bm_c(\xi-1)\xi^2
+\left[2\mathcal M^2(3\xi^3-6\xi^2+4\xi-1)
++2\mathcal M m_c^2(2\xi^2-2\xi+1)-m_c^4\xi\right] \nonumber\\
+&+m_c^2\xi^3
+\left[-2\mathcal M^2(\xi-1)^2(3\xi^2+4\xi-4)
++\mathcal M m_c^2(-11\xi^3+6\xi^2+9\xi-4)
+-3m_c^4\xi^2\right] \nonumber\\
+&-m_b^4(\xi-1)^2\xi
+\left[\mathcal M(\xi-1)^2(11\xi-8)
++3m_c^2(3\xi^2-4\xi+2)\right] \nonumber\\
+&+6m_b^3m_c(\xi-1)^2\xi
+\left[\mathcal M(-2\xi^2+2\xi-1)+m_c^2\xi\right]
++3m_b^6(\xi-1)^5
+-3m_b^5m_c(\xi-1)^3\xi .
+\end{align}
+
+\subsection{Dimension-six triple-gluon condensate}
+
+\begingroup
+\small
+
+For the single-line triple-gluon contribution we use
+\begin{align}
+  C^{AA}_{G^3} &=
+  \frac{P^{AA}_{G^3}}{7680\pi^2\mathcal M^4(\xi-1)^5\xi^5},
+  &
+  C^{AB}_{G^3} &=
+  -\frac{P^{AB}_{G^3}}
+  {7680\pi^2\mathcal M^4(\xi-1)^6\xi^6(m_b+m_c)}, \nonumber\\
+  C^{BB}_{G^3} &=
+  \frac{P^{BB}_{G^3}}
+  {7680\pi^2\mathcal M^4(\xi-1)^6\xi^6(m_b+m_c)^2}.
+\end{align}
+The numerators are
+\begin{align}
+P^{AA}_{G^3}={}&
+m_b^2(\xi-1)\xi^2\Big[
+2\mathcal M^2(\xi-1)^2(9\xi^4-59\xi^2+68\xi-24) \nonumber\\
+&\hspace{0.8cm}
++2\mathcal M m_c^2(33\xi^5-99\xi^4+89\xi^3-13\xi^2-19\xi+9)
++m_c^4\xi(15\xi^3-17\xi^2+15\xi-6)\Big] \nonumber\\
+&+2m_bm_c\xi^2\Big[
+18\mathcal M^2(\xi-1)^2(2\xi^4-4\xi^3+2\xi-1) \nonumber\\
+&\hspace{0.8cm}
++2\mathcal M m_c^2\xi(13\xi^4-39\xi^3+50\xi^2-33\xi+9)
++m_c^4\xi^2(-5\xi^2+9\xi-3)\Big] \nonumber\\
+&+\xi^3\Big[
+2\mathcal M^3(\xi-1)^3(9\xi^4-18\xi^3+31\xi^2-22\xi+6) \nonumber\\
+&\hspace{0.8cm}
+-2\mathcal M^2m_c^2(\xi-1)^2(9\xi^4-36\xi^3-5\xi^2+14\xi-6) \nonumber\\
+&\hspace{0.8cm}
++\mathcal M m_c^4\xi(-33\xi^4+78\xi^3-68\xi^2+31\xi-8)
++m_c^6\xi^2(-5\xi^2-3\xi+1)\Big] \nonumber\\
+&-m_b^4(\xi-1)^3\xi
+\Big[\mathcal M(33\xi^4-87\xi^3+86\xi^2-35\xi+3)
++m_c^2(15\xi^3-28\xi^2+26\xi-7)\Big] \nonumber\\
+&-4m_b^3m_c(\xi-1)^2\xi
+\Big[\mathcal M(13\xi^4-26\xi^3+24\xi^2-13\xi+2)
++m_c^2\xi(-5\xi^2+5\xi-1)\Big] \nonumber\\
+&+m_b^6(\xi-1)^5(5\xi^2-13\xi+7)
+-2m_b^5m_c(\xi-1)^4(5\xi^2-\xi-1),
+\end{align}
+\begin{align}
+P^{AB}_{G^3}={}&
+m_b^3(\xi-1)^2\xi^2\Big[
+12\mathcal M^2(\xi-1)^2(10\xi^4-26\xi^3+21\xi^2-5\xi-1) \nonumber\\
+&\hspace{0.8cm}
++2\mathcal M m_c^2(20\xi^6-35\xi^5-31\xi^4+112\xi^3-104\xi^2+42\xi-4)
++m_c^4\xi(15\xi^4-40\xi^3+58\xi^2-30\xi+4)\Big] \nonumber\\
+&+m_b^2m_c(\xi-1)\xi^3\Big[
+6\mathcal M^2(\xi-1)^2(25\xi^4-34\xi^3-12\xi^2+26\xi-11) \nonumber\\
+&\hspace{0.8cm}
+-2\mathcal M m_c^2(20\xi^6-105\xi^5+179\xi^4-132\xi^3+34\xi^2+13\xi-9)
++m_c^4\xi(-15\xi^4+25\xi^3-17\xi^2+15\xi-6)\Big] \nonumber\\
+&-m_b(\xi-1)\xi^3\Big[
+24\mathcal M^3(\xi-1)^3(2\xi^3-9\xi^2+9\xi-3) \nonumber\\
+&\hspace{0.8cm}
++6\mathcal M^2m_c^2(\xi-1)^2(25\xi^4-66\xi^3+36\xi^2-6) \nonumber\\
+&\hspace{0.8cm}
++2\mathcal M m_c^4\xi(10\xi^5-5\xi^4-39\xi^3+76\xi^2-60\xi+18)
++m_c^6\xi^2(5\xi^3-10\xi^2+18\xi-6)\Big] \nonumber\\
+&+m_c\xi^4\Big[
+24\mathcal M^3(\xi-1)^3(2\xi^3+3\xi^2-3\xi+1) \nonumber\\
+&\hspace{0.8cm}
+-12\mathcal M^2m_c^2(\xi-1)^2(10\xi^4-14\xi^3+3\xi^2+\xi-1) \nonumber\\
+&\hspace{0.8cm}
++4\mathcal M m_c^4\xi(5\xi^5-20\xi^4+24\xi^3-14\xi^2+7\xi-2)
++m_c^6\xi^2(5\xi^3-5\xi^2-3\xi+1)\Big] \nonumber\\
+&-m_b^5(\xi-1)^4\xi
+\Big[4\mathcal M(5\xi^5-10\xi^4-\xi^3+18\xi^2-16\xi+4)
++m_c^2(15\xi^4-35\xi^3+32\xi^2-4\xi-2)\Big] \nonumber\\
+&+m_b^4m_c(\xi-1)^3\xi^2
+\Big[2\mathcal M(10\xi^5-55\xi^4+86\xi^3-70\xi^2+34\xi-5)
++m_c^2(15\xi^4-20\xi^3+28\xi^2-26\xi+7)\Big] \nonumber\\
+&+m_b^7(\xi-1)^6(5\xi^3-10\xi^2+2\xi+2) \nonumber\\
+&-m_b^6m_c(\xi-1)^5\xi(5\xi^3-5\xi^2+13\xi-7),
+\end{align}
+\begin{align}
+P^{BB}_{G^3}={}&
+m_b^4(\xi-1)^2\xi^2\Big[
+2\mathcal M^2(\xi-1)^2(75\xi^4-174\xi^3+113\xi^2-2\xi-18) \nonumber\\
+&\hspace{0.8cm}
++2\mathcal M m_c^2(87\xi^5-304\xi^4+418\xi^3-291\xi^2+100\xi-10)
++m_c^4(30\xi^4-60\xi^3+69\xi^2-39\xi+7)\Big] \nonumber\\
+&+2m_b^3m_c(\xi-1)\xi^2\Big[
+6\mathcal M^2(\xi-1)^2(19\xi^4-38\xi^3+24\xi^2-7\xi-1) \nonumber\\
+&\hspace{0.8cm}
++4\mathcal M m_c^2(3\xi^5-9\xi^4+18\xi^3-21\xi^2+10\xi-1)
++m_c^4\xi(-15\xi^3+29\xi^2-15\xi+2)\Big] \nonumber\\
+&-2m_b^2(\xi-1)\xi^3\Big[
+2\mathcal M^3(\xi-1)^3(9\xi^4+9\xi^3-104\xi^2+113\xi-39) \nonumber\\
+&\hspace{0.8cm}
++2\mathcal M^2m_c^2(\xi-1)^2(75\xi^4-150\xi^3+14\xi^2+61\xi-33) \nonumber\\
+&\hspace{0.8cm}
++\mathcal M m_c^4(87\xi^5-218\xi^4+203\xi^3-81\xi^2+9)
++m_c^6\xi(10\xi^3-7\xi^2+7\xi-3)\Big] \nonumber\\
+&-2m_bm_c\xi^3\Big[
+36\mathcal M^3(\xi-1)^3(2\xi^4-4\xi^3+2\xi-1) \nonumber\\
+&\hspace{0.8cm}
++6\mathcal M^2m_c^2(\xi-1)^2(19\xi^4-38\xi^3+24\xi^2-3\xi-3) \nonumber\\
+&\hspace{0.8cm}
++2\mathcal M m_c^4\xi(3\xi^4-11\xi^3+26\xi^2-27\xi+9)
++m_c^6\xi^2(-5\xi^2+9\xi-3)\Big] \nonumber\\
+&+\xi^4\Big[
+-4\mathcal M^4(\xi-1)^4(9\xi^4-18\xi^3+31\xi^2-22\xi+6) \nonumber\\
+&\hspace{0.8cm}
++4\mathcal M^3m_c^2(\xi-1)^3(9\xi^4-45\xi^3-23\xi^2+32\xi-12) \nonumber\\
+&\hspace{0.8cm}
++2\mathcal M^2m_c^4(\xi-1)^2(75\xi^4-126\xi^3+41\xi^2-2\xi-6) \nonumber\\
+&\hspace{0.8cm}
++2\mathcal M m_c^6\xi(29\xi^4-44\xi^3+24\xi^2-13\xi+4)
++m_c^8\xi^2(5\xi^2+3\xi-1)\Big] \nonumber\\
+&-2m_b^6(\xi-1)^4\xi
+\Big[\mathcal M(29\xi^4-101\xi^3+138\xi^2-85\xi+19)
++m_c^2(10\xi^3-23\xi^2+23\xi-7)\Big] \nonumber\\
+&-2m_b^5m_c(\xi-1)^3\xi
+\Big[\mathcal M(6\xi^4-8\xi^3+24\xi^2-30\xi+8)
+-m_c^2(15\xi^3-16\xi^2+2\xi+1)\Big] \nonumber\\
+&+m_b^8(\xi-1)^6(5\xi^2-13\xi+7) \nonumber\\
+&-2m_b^7m_c(\xi-1)^5(5\xi^2-\xi-1).
+\end{align}
+
+\endgroup
